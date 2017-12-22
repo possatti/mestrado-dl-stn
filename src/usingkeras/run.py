@@ -2,38 +2,37 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function, division
+from keras import backend as K
+from keras.models import Sequential, model_from_json
+from keras.callbacks import TensorBoard
+from keras.layers.core import Dense, Dropout, Activation, Flatten
+from keras.layers.convolutional import Conv2D, MaxPooling2D
+from spatial_transformer import SpatialTransformer
 
 import matplotlib.pyplot as plt
 import numpy as np
+import datetime
 import argparse
 import sys
+import re
 import os
 
-def baseline_model(input_shape=(1600,), output_dim=10):
-    from keras.models import Sequential
-    from keras.layers.core import Dense, Dropout, Activation, Flatten
-    from keras.layers.convolutional import Conv2D, MaxPooling2D
-
+def create_baseline_model(input_shape=(1600,), output_dim=10):
     model = Sequential()
-    model.add(Conv2D(64, (11, 11), activation='relu', input_shape=input_shape))
-    model.add(MaxPooling2D(pool_size=(3, 3)))
-    model.add(Conv2D(128, (7, 7), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(3, 3)))
+
+    model.add(Conv2D(32, (3, 3), activation='relu', input_shape=input_shape))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(32, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
-    model.add(Dense(4096))
+    model.add(Dense(256, activation='relu'))
     model.add(Dense(output_dim, activation='softmax'))
 
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     return model
 
-def stn_model(input_shape=(1600,), output_dim=10):
-    from keras.models import Sequential
-    from keras.layers.core import Dense, Dropout, Activation, Flatten
-    from keras.layers.convolutional import Conv2D, MaxPooling2D
-    from spatial_transformer import SpatialTransformer
-
-
+def create_stn_model(input_shape=(1600,), output_dim=10):
     b = np.zeros((2, 3), dtype='float32')
     b[0, 0] = 1
     b[1, 1] = 1
@@ -52,13 +51,13 @@ def stn_model(input_shape=(1600,), output_dim=10):
 
     model = Sequential()
     model.add(SpatialTransformer(localization_net=locnet,
-                             output_size=(30,30), input_shape=input_shape))
-    model.add(Conv2D(64, (11, 11), activation='relu', padding='same'))
-    model.add(MaxPooling2D(pool_size=(3, 3)))
-    model.add(Conv2D(128, (7, 7), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(3, 3)))
+                             output_size=(40,40), input_shape=input_shape))
+    model.add(Conv2D(32, (3, 3), activation='relu', input_shape=input_shape))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(32, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
-    model.add(Dense(4096))
+    model.add(Dense(256, activation='relu'))
     model.add(Dense(output_dim, activation='softmax'))
 
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -74,6 +73,26 @@ def shuffle_in_unison(a, b):
         shuffled_a[new_index] = a[old_index]
         shuffled_b[new_index] = b[old_index]
     return shuffled_a, shuffled_b
+
+def now():
+    return datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+def save_model(model, model_path, weights_path):
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    os.makedirs(os.path.dirname(weights_path), exist_ok=True)
+    model_json = model.to_json()
+    with open(model_path, 'w') as f:
+        f.write(model_json)
+    model.save_weights(weights_path)
+
+def load_model(model_path, weights_path):
+    json_file = open(model_path, 'r')
+    with open(model_path, 'r') as f:
+        model_json = f.read()
+    model = model_from_json(model_json, {'SpatialTransformer': SpatialTransformer})
+    model.load_weights(weights_path)
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model
 
 def main(args):
     print('Loading Cluttered MNIST from: {}'.format(args.dataset), file=sys.stderr)
@@ -97,55 +116,129 @@ def main(args):
     Y_valid = to_categorical(y_valid, num_classes=10)
     Y_test = to_categorical(y_test, num_classes=10)
 
-    # Shuffle.
-    X_train, Y_train = shuffle_in_unison(X_train, Y_train)
-    X_valid, Y_valid = shuffle_in_unison(X_valid, Y_valid)
+    # Shuffle. (Should not be necessary for training, since `fit` already shuffles.)
+    np.random.seed(7)
+    # X_train, Y_train = shuffle_in_unison(X_train, Y_train)
+    # X_valid, Y_valid = shuffle_in_unison(X_valid, Y_valid)
     X_test, Y_test = shuffle_in_unison(X_test, Y_test)
 
-    # # Visualize data.
-    # subplots_xnumber = 5
-    # subplots_number = subplots_xnumber ** 2
-    # for page in range(int(1000 / subplots_number)):
-    #     print("page:", page + 1, file=sys.stderr)
-    #     fig, axes = plt.subplots(subplots_xnumber, subplots_xnumber)
-    #     for i in range(subplots_xnumber):
-    #         for j in range(subplots_xnumber):
-    #             n = page*subplots_number + i*subplots_xnumber+j
-    #             axes[i,j].imshow(X_test.reshape(1000, 40, 40)[n,...], cmap='gray')
-    #             # axes[i,j].set_title('Label: {}'.format(y_test[n]))
-    #             axes[i,j].set_title('{}'.format(Y_test[n]))
-    #             axes[i,j].axis('off')
-    #     plt.show()
-    #     break
 
-    from keras.callbacks import TensorBoard
+    right_now = now()
+    baseline_model_def_path = os.path.join(args.trained_dir, 'baseline_{}.json'.format(right_now))
+    baseline_model_wights_path = os.path.join(args.trained_dir, 'baseline_{}.hd5'.format(right_now))
+    stn_model_def_path = os.path.join(args.trained_dir, 'stn_{}.json'.format(right_now))
+    stn_model_wights_path = os.path.join(args.trained_dir, 'stn_{}.hd5'.format(right_now))
 
-    print('Training baseline model...')
-    baseline = baseline_model(input_shape=(40,40,1), output_dim=10)
-    baseline.fit(X_train, Y_train, validation_data=(X_valid, Y_valid), epochs=args.epochs,
-        batch_size=128, callbacks=[TensorBoard(log_dir='./logs/baseline')])
-    loss_and_metrics = baseline.evaluate(X_test, Y_test, batch_size=128)
-    print('Metrics on test data:')
-    for metric_name, metric_value in zip(baseline.metrics_names, loss_and_metrics):
-        print(' - {}: {}'.format(metric_name, metric_value))
+    # Train or load baseline model.
+    baseline = create_baseline_model(input_shape=(40,40,1), output_dim=10)
+    if args.baseline_weights:
+        print('Loading baseline model...')
+        baseline.load_weights(args.baseline_weights)
+    else:
+        print('Training baseline model...')
+        baseline.fit(X_train, Y_train, validation_data=(X_valid, Y_valid), epochs=args.epochs,
+            batch_size=128, callbacks=[TensorBoard(log_dir=os.path.join(args.tensorboard_dir, 'baseline'))])
+        save_model(baseline, baseline_model_def_path, baseline_model_wights_path)
 
+    # Train or load STN model.
+    stn = create_stn_model(input_shape=(40,40,1), output_dim=10)
+    if args.stn_weights:
+        print('Loading stn model...')
+        stn.load_weights(args.stn_weights)
+    else:
         print('Training stn model...')
-    stn = stn_model(input_shape=(40,40,1), output_dim=10)
-    stn.fit(X_train, Y_train, validation_data=(X_valid, Y_valid), epochs=args.epochs,
-        batch_size=128, callbacks=[TensorBoard(log_dir='./logs/stn')])
-    loss_and_metrics = stn.evaluate(X_test, Y_test, batch_size=128)
-    print('Metrics on test data:')
-    for metric_name, metric_value in zip(stn.metrics_names, loss_and_metrics):
-        print(' - {}: {}'.format(metric_name, metric_value))
+        stn.fit(X_train, Y_train, validation_data=(X_valid, Y_valid), epochs=args.epochs,
+            batch_size=128, callbacks=[TensorBoard(log_dir=os.path.join(args.tensorboard_dir, 'stn'))])
+        save_model(stn, stn_model_def_path, stn_model_wights_path)
 
+    # Evaluate models.
+    if args.command == 'evaluate':
+        loss_and_metrics = baseline.evaluate(X_test, Y_test, batch_size=128)
+        print('Metrics on test data using baseline:')
+        for metric_name, metric_value in zip(baseline.metrics_names, loss_and_metrics):
+            print(' - {}: {}'.format(metric_name, metric_value))
+        print()
+
+        loss_and_metrics = stn.evaluate(X_test, Y_test, batch_size=128)
+        print('Metrics on test data using stn model:')
+        for metric_name, metric_value in zip(stn.metrics_names, loss_and_metrics):
+            print(' - {}: {}'.format(metric_name, metric_value))
+        print()
+
+    # Visualize images passing through the STN.
+    if args.command == 'visualize':
+        pass_through_st = K.function([stn.input], [stn.layers[0].output])
+
+        samples = X_test[:25]
+        samples_transformed = pass_through_st([samples.astype('float32')])
+
+        # Input images.
+        for i in range(25):
+            plt.subplot(5, 5, i+1)
+            plt.imshow(np.squeeze(samples[i]), cmap='gray')
+            plt.title('Label: {}'.format(np.argmax(Y_test[i])))
+            plt.axis('off')
+        plt.show()
+
+        # Output from STN.
+        for i in range(25):
+            plt.subplot(5, 5, i+1)
+            plt.imshow(np.squeeze(samples_transformed[0][i]), cmap='gray')
+            plt.title('Label: {}'.format(np.argmax(Y_test[i])))
+            plt.axis('off')
+        plt.show()
 
 if __name__ == '__main__':
     # Defaults.
     default_cluttered_mnist_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'mnist_sequence1_sample_5distortions5x5.npz'))
+    default_trained_models_dir = os.path.join(os.path.dirname(__file__), 'trained')
+    default_tensorboard_dir = os.path.join(os.path.dirname(__file__), 'logs')
 
     # Arguments and options.
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--dataset', default=default_cluttered_mnist_path)
+    parser.add_argument('--baseline-model-def')
+    parser.add_argument('--baseline-weights')
+    parser.add_argument('--stn-model-def')
+    parser.add_argument('--stn-weights')
+    parser.add_argument('--tensorboard-dir', default=default_tensorboard_dir)
+    parser.add_argument('--trained-dir', default=default_trained_models_dir,
+        help='Directory where the trained models will be saves or loaded from.')
+    parser.add_argument('--load-last', action='store_true', help='Load the last trained models.')
     parser.add_argument('--epochs', type=int, default=10)
+
+    # Commands.
+    subparsers = parser.add_subparsers(help='Available commands.', dest='command')
+    visualize_parser = subparsers.add_parser('visualize', help='Visualize transformation through the STN.')
+    evaluate_parser = subparsers.add_parser('evaluate', help='Evaluate both models (may need training).')
+
+    # Parse arguments.
     args = parser.parse_args()
+    if not args.command:
+        parser.print_help(file=sys.stderr)
+
+    # Find last trained model for each model.
+    if args.load_last:
+        stn_hd5s = []
+        stn_model_defs = []
+        baseline_hd5s = []
+        baseline_model_defs = []
+        for root, dirs, files in os.walk(args.trained_dir):
+            for filename in files:
+                filepath = os.path.join(root, filename)
+                if re.match(r'stn_.*\.hd5', filename):
+                    stn_hd5s.append(filepath)
+                elif re.match(r'stn_.*\.json', filename):
+                    stn_model_defs.append(filepath)
+                elif re.match(r'baseline_.*\.hd5', filename):
+                    baseline_hd5s.append(filepath)
+                elif re.match(r'baseline_.*\.json', filename):
+                    baseline_model_defs.append(filepath)
+        if len(stn_hd5s) > 0 and len(stn_model_defs) > 0:
+            args.stn_weights = stn_hd5s[-1]
+            args.stn_model_def = stn_model_defs[-1]
+        if len(baseline_hd5s) > 0 and len(baseline_model_defs) > 0:
+            args.baseline_weights = baseline_hd5s[-1]
+            args.baseline_model_def = baseline_model_defs[-1]
+
     main(args)

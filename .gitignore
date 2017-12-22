@@ -1,3 +1,6 @@
 # Python cache.
 _pycache__/
 *.py[cod]
+
+# Ignore trained models.
+trained/
