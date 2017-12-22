@@ -1,6 +1,3 @@
-# Datasets.
-data/mnist_sequence1_sample_5distortions5x5.npz
-
 # Python cache.
 _pycache__/
 *.py[cod]
