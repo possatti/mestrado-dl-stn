@@ -1,8 +1,11 @@
 from PIL import Image
+from keras.utils import to_categorical
 
 import matplotlib.pyplot as plt
 import numpy as np
+import random
 import sys
+import os
 
 try:
     import cPickle as pickle
@@ -31,6 +34,12 @@ def save_batch(batch_path, X, y):
         os.makedirs(batch_dir)
     with open(batch_path, 'wb') as f:
         pickle.dump(batch, f)
+
+def batch_preprocessing(X, y):
+    """Prepare batch for training."""
+    newX = X.astype('float32') / 255
+    onehot = to_categorical(y, num_classes=10)
+    return newX, onehot
 
 class BatchVisualizer(object):
     def __init__(self, X, y, n_rows, n_cols):

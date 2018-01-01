@@ -10,19 +10,21 @@ from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 from spatial_transformer import SpatialTransformer
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
 import argparse
 import random
 import sys
+import re
 import os
 
-from cifar_utils import load_batch, zuar_batch, BatchVisualizer
+from cifar_utils import load_batch, zuar_batch, batch_preprocessing, BatchVisualizer
+
 
 def create_baseline_model(input_shape=(64, 64, 3), output_dim=10):
     model = Sequential()
+    # model.add(Input(shape=input_shape)) # Does this work?
     model.add(Conv2D(48, (3, 3), activation='relu', padding='same', input_shape=input_shape))
     model.add(Conv2D(48, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -41,37 +43,43 @@ def create_baseline_model(input_shape=(64, 64, 3), output_dim=10):
 
     return model
 
-# def create_stn_model(input_shape=(1600,), output_dim=10):
-#     b = np.zeros((2, 3), dtype='float32')
-#     b[0, 0] = 1
-#     b[1, 1] = 1
-#     W = np.zeros((50, 6), dtype='float32')
-#     weights = [W, b.flatten()]
+def create_stn_model(input_shape=(64, 64, 3), output_dim=10):
+    b = np.zeros((2, 3), dtype='float32')
+    b[0, 0] = 1
+    b[1, 1] = 1
+    W = np.zeros((50, 6), dtype='float32')
+    weights = [W, b.flatten()]
 
-#     locnet = Sequential()
-#     locnet.add(MaxPooling2D(pool_size=(2,2), input_shape=input_shape))
-#     locnet.add(Conv2D(20, (5, 5)))
-#     locnet.add(MaxPooling2D(pool_size=(2,2)))
-#     locnet.add(Conv2D(20, (5, 5)))
-#     locnet.add(Flatten())
-#     locnet.add(Dense(50))
-#     locnet.add(Activation('relu'))
-#     locnet.add(Dense(6, weights=weights))
+    locnet = Sequential()
+    locnet.add(MaxPooling2D(pool_size=(2,2), input_shape=input_shape))
+    locnet.add(Conv2D(20, (5, 5)))
+    locnet.add(MaxPooling2D(pool_size=(2,2)))
+    locnet.add(Conv2D(20, (5, 5)))
+    locnet.add(Flatten())
+    locnet.add(Dense(50))
+    locnet.add(Activation('relu'))
+    locnet.add(Dense(6, weights=weights))
 
-#     model = Sequential()
-#     model.add(SpatialTransformer(localization_net=locnet,
-#                              output_size=(40,40), input_shape=input_shape))
-#     model.add(Conv2D(32, (3, 3), activation='relu', input_shape=input_shape))
-#     model.add(MaxPooling2D(pool_size=(2, 2)))
-#     model.add(Conv2D(32, (3, 3), activation='relu'))
-#     model.add(MaxPooling2D(pool_size=(2, 2)))
-#     model.add(Flatten())
-#     model.add(Dense(256, activation='relu'))
-#     model.add(Dense(output_dim, activation='softmax'))
+    model = Sequential()
+    model.add(SpatialTransformer(localization_net=locnet,
+                             output_size=(64,64), input_shape=input_shape))
+    model.add(Conv2D(48, (3, 3), activation='relu', padding='same', input_shape=input_shape))
+    model.add(Conv2D(48, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(96, (3, 3), activation='relu', padding='same'))
+    model.add(Conv2D(96, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(192, (3, 3), activation='relu', padding='same'))
+    model.add(Conv2D(192, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Flatten())
+    model.add(Dense(512, activation='relu'))
+    model.add(Dense(256, activation='relu'))
+    model.add(Dense(output_dim, activation='softmax'))
 
-#     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-#     return model
+    return model
 
 def create_timestamp():
     return datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -95,7 +103,7 @@ def load_model(model_path, weights_path):
 
 MODELS = {
     'baseline': create_baseline_model,
-    # 'stn': create_stn_model,
+    'stn': create_stn_model,
 }
 
 random.seed(7)
@@ -112,46 +120,49 @@ def train(args):
 
     X = np.concatenate([X_b1, X_b2, X_b3, X_b4, X_b5], axis=0)
     y = np.concatenate([y_b1, y_b2, y_b3, y_b4, y_b5], axis=0)
-    Y = to_categorical(y, num_classes=10)
+
+    X, Y = batch_preprocessing(X, y)
 
     right_now = create_timestamp()
     for model_name, create_fn in MODELS.items():
-        tb_logdir = os.path.join(args.tensorboard_dir, model_name)
-        model_def_path = os.path.join(args.trained_dir, '{}_{}.json'.format(model_name, right_now))
-        model_weights_path = os.path.join(args.trained_dir, '{}_{}.hd5'.format(model_name, right_now))
+        if model_name in args.allowed_models:
+            tb_logdir = os.path.join(args.tensorboard_dir, model_name)
+            model_def_path = os.path.join(args.trained_dir, '{}_{}.json'.format(model_name, right_now))
+            model_weights_path = os.path.join(args.trained_dir, '{}_{}.hd5'.format(model_name, right_now))
 
-        print('Creating {} model...'.format(model_name))
-        model = create_fn(input_shape=(32,32,3), output_dim=10)
-        print('Training {} model...'.format(model_name))
-        model.fit(X, Y, validation_split=0.25, epochs=args.epochs,
-            batch_size=128, callbacks=[TensorBoard(log_dir=tb_logdir)])
-        save_model(model, baseline_model_def_path, baseline_model_wights_path)
+            print('Creating {} model...'.format(model_name))
+            model = create_fn(input_shape=(32,32,3), output_dim=10)
+            print('Training {} model...'.format(model_name))
+            model.fit(X, Y, validation_split=0.1, epochs=args.epochs,
+                batch_size=128, callbacks=[TensorBoard(log_dir=tb_logdir)])
+            save_model(model, model_def_path, model_weights_path)
 
 def evaluate(args):
     print('Loading test data from: {}'.format(args.cifar10), file=sys.stderr)
     X, y = load_batch(os.path.join(args.cifar10, 'test_batch'))
-    Y = to_categorical(y, num_classes=10)
+    X, Y = batch_preprocessing(X, y)
 
     for model_name, create_fn in MODELS.items():
-        # Find last trained model.
-        weights_filepath = None
-        for filename in os.listdir(args.trained_dir):
-            if re.match(r'{}_.*\.hd5'.format(model_name), filename):
-                weights_filepath = os.path.join(args.trained_dir, filename)
+        if model_name in args.allowed_models:
+            # Find last trained model.
+            weights_filepath = None
+            for filename in os.listdir(args.trained_dir):
+                if re.match(r'{}_.*\.hd5'.format(model_name), filename):
+                    weights_filepath = os.path.join(args.trained_dir, filename)
 
-        if weights_filepath:
-            print('Creating {} model...'.format(model_name))
-            model = create_fn(input_shape=(32,32,3), output_dim=10)
-            print('Loading {} weights...'.format(model_name))
-            model.load_weights(weights_filepath)
-            print('Evaluating {}...'.format(model_name))
-            loss_and_metrics = model.evaluate(X_test, Y_test, batch_size=128)
-            print('Metrics on test data using {}:'.format(model_name))
-            for metric_name, metric_value in zip(model.metrics_names, loss_and_metrics):
-                print(' - {}: {}'.format(metric_name, metric_value))
-            print()
-        else:
-            print('Could not find trained model for "{}". Skipping.'.format(model_name))
+            if weights_filepath:
+                print('Creating {} model...'.format(model_name))
+                model = create_fn(input_shape=(32,32,3), output_dim=10)
+                print('Loading {} weights...'.format(model_name))
+                model.load_weights(weights_filepath)
+                print('Evaluating {}...'.format(model_name))
+                loss_and_metrics = model.evaluate(X, Y, batch_size=128)
+                print('\nMetrics on test data using {}:'.format(model_name))
+                for metric_name, metric_value in zip(model.metrics_names, loss_and_metrics):
+                    print(' - {}: {}'.format(metric_name, metric_value))
+                print()
+            else:
+                print('Could not find trained model for "{}". Skipping.'.format(model_name))
 
 def visualize(args):
     pass_through_st = K.function([stn.input], [stn.layers[0].output])
@@ -189,6 +200,8 @@ if __name__ == '__main__':
     parser.add_argument('--tensorboard-dir', default=default_tensorboard_dir)
     parser.add_argument('--trained-dir', default=default_trained_models_dir,
         help='Directory where the trained models will be saves or loaded from.')
+    parser.add_argument('--only', action='append', choices=MODELS, help='Only run these models.')
+    parser.add_argument('--skip', action='append', choices=MODELS, help='Skip these models.')
 
     # Commands.
     subparsers = parser.add_subparsers(help='Available commands.', dest='command')
@@ -199,6 +212,15 @@ if __name__ == '__main__':
 
     # Parse arguments.
     args = parser.parse_args()
+
+    # Find which models should be run.
+    args.allowed_models = MODELS.keys()
+    if args.skip:
+        args.allowed_models = list(filter(lambda name: name not in args.skip, args.allowed_models))
+    if args.only:
+        args.allowed_models = list(filter(lambda name: name in args.only, args.allowed_models))
+
+    # Run command.
     if not args.command:
         parser.print_help(file=sys.stderr)
     elif args.command == 'train': train(args)

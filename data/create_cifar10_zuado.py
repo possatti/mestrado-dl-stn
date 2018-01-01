@@ -61,6 +61,7 @@ def main(args):
 
     # Mess with the test images.
     if not os.path.isdir(CIFAR_10_ZUADO_DIR):
+        print("Creating CIFAR-10-ZUADO at: `{}`.".format(CIFAR_10_ZUADO_DIR), file=sys.stderr)
         X, y = load_batch(os.path.join(CIFAR_10_DIR, 'test_batch'))
         Xz = zuar_batch(X, horizontal_flip=False)
         save_batch(os.path.join(CIFAR_10_ZUADO_DIR, 'test_batch'), Xz, y)
@@ -74,6 +75,8 @@ def main(args):
         #     plt.imshow(Xz[i])
         #     plt.axis('off')
         # plt.show()
+    else:
+        print("CIFAR-10-ZUADO already present at: `{}`.".format(CIFAR_10_ZUADO_DIR), file=sys.stderr)
 
 def inspect(args):
     X, y = load_batch(args.batch_path)
