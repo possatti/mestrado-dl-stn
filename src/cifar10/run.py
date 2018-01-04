@@ -15,6 +15,7 @@ import numpy as np
 import datetime
 import argparse
 import random
+import time
 import sys
 import re
 import os
@@ -134,6 +135,7 @@ def train(args):
             model_def_path = os.path.join(args.trained_dir, '{}_{}_{}.json'.format(args.dataset, model_name, right_now))
             model_weights_path = os.path.join(args.trained_dir, '{}_{}_{}.hd5'.format(args.dataset, model_name, right_now))
 
+            begin = time.time()
             if args.dataset == 'CIFAR-10':
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(32,32,3), output_dim=10)
@@ -150,6 +152,9 @@ def train(args):
                     steps_per_epoch=len(X)/100, epochs=args.epochs)
             else:
                 raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
+            end = time.time()
+            duration = datetime.timedelta(seconds=end-begin)
+            print('Training of {} lasted {}.'.format(model_name, duration))
             save_model(model, model_def_path, model_weights_path)
 
 def evaluate(args):
@@ -183,8 +188,12 @@ def evaluate(args):
                 print('Loading {} weights...'.format(model_name))
                 model.load_weights(weights_filepath)
                 print('Evaluating {}...'.format(model_name))
+                begin = time.time()
                 loss_and_metrics = model.evaluate(X, Y, batch_size=128)
-                print('\nMetrics on test data using {}:'.format(model_name))
+                end = time.time()
+                duration = datetime.timedelta(seconds=end-begin)
+                print('\nEvaluation of {} lasted {}.'.format(model_name, duration))
+                print('Metrics on test data using {}:'.format(model_name))
                 for metric_name, metric_value in zip(model.metrics_names, loss_and_metrics):
                     print(' - {}: {}'.format(metric_name, metric_value))
                 print()
