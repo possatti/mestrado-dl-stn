@@ -72,8 +72,11 @@ def zuar_batch(X, rotation_range=60, horizontal_flip=True,
     horizontal_translation_range=20, vertical_translation_range=20):
     from PIL import Image
     n_images = len(X)
-    Xz = np.empty(shape=(n_images, 64,64,3), dtype=X.dtype)
+    original_dtype = X.dtype
+    Xz = np.empty(shape=(n_images, 64,64,3), dtype=original_dtype)
 
+    if original_dtype != np.uint8:
+        raise ValueError('dtype should be uint8, got dtype {}.'.format(original_dtype))
     if X.shape[1:] != (32,32,3):
         raise ValueError('Shape should be (_,32,32,3), got shape {}.'.format(X.shape))
 
@@ -89,8 +92,6 @@ def zuar_batch(X, rotation_range=60, horizontal_flip=True,
 
         # Transform image.
         im_m = X[i,...]
-        if im_m.shape != (32,32,3):
-            raise ValueError('Image shape should be (32,32,3), got shape {}.'.format(im_m.shape))
         im = Image.fromarray(im_m)
         newim = Image.new(im.mode, (64,64))
         newim.paste(im, box=(16,16))
@@ -103,10 +104,13 @@ def zuar_batch(X, rotation_range=60, horizontal_flip=True,
 
     return Xz
 
-def generate_distorted_batches(X, Y, batch_size=100):
+def generate_distorted_batches(X, y, batch_size=100, preprocess=True):
     X = zuar_batch(X)
     assert len(X) % batch_size == 0, 'ERR:  Total size should be multiple of batch size!'
     for i in range(0, len(X), batch_size):
         batch_begin = i
         batch_end = i + batch_size
-        yield (X[batch_begin:batch_end], Y[batch_begin:batch_end])
+        if preprocess:
+            yield batch_preprocessing(X[batch_begin:batch_end], y[batch_begin:batch_end])
+        else:
+            yield (X[batch_begin:batch_end], y[batch_begin:batch_end])

@@ -127,8 +127,6 @@ def train(args):
     X = np.concatenate([X_b1, X_b2, X_b3, X_b4, X_b5], axis=0)
     y = np.concatenate([y_b1, y_b2, y_b3, y_b4, y_b5], axis=0)
 
-    X, Y = cifar_utils.batch_preprocessing(X, y)
-
     right_now = create_timestamp()
     for model_name, create_fn in MODELS.items():
         if model_name in args.allowed_models:
@@ -140,10 +138,11 @@ def train(args):
             model = create_fn(input_shape=(32,32,3), output_dim=10)
             print('Training {} model on {}...'.format(model_name, args.dataset))
             if args.dataset == 'CIFAR-10':
+                X, Y = cifar_utils.batch_preprocessing(X, y)
                 model.fit(X, Y, validation_split=0.1, epochs=args.epochs,
                     batch_size=128, callbacks=[TensorBoard(log_dir=tb_logdir)])
             elif args.dataset == 'CIFAR-10-DISTORTED':
-                model.fit_generator(cifar_utils.generate_distorted_batches(X, Y, batch_size=100),
+                model.fit_generator(cifar_utils.generate_distorted_batches(X, y, batch_size=100),
                     steps_per_epoch=len(X)/100, epochs=args.epochs)
             else:
                 raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
