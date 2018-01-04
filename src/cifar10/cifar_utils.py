@@ -74,6 +74,9 @@ def zuar_batch(X, rotation_range=60, horizontal_flip=True,
     n_images = len(X)
     Xz = np.empty(shape=(n_images, 64,64,3), dtype=X.dtype)
 
+    if X.shape[1:] != (32,32,3):
+        raise ValueError('Shape should be (_,32,32,3), got shape {}.'.format(X.shape))
+
     for i in range(n_images):
         # Define parameters for transformation.
         angle_deg = random.randint(-int(rotation_range/2), int(rotation_range/2))
@@ -86,6 +89,8 @@ def zuar_batch(X, rotation_range=60, horizontal_flip=True,
 
         # Transform image.
         im_m = X[i,...]
+        if im_m.shape != (32,32,3):
+            raise ValueError('Image shape should be (32,32,3), got shape {}.'.format(im_m.shape))
         im = Image.fromarray(im_m)
         newim = Image.new(im.mode, (64,64))
         newim.paste(im, box=(16,16))

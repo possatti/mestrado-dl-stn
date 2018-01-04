@@ -115,7 +115,8 @@ random.seed(7)
 np.random.seed(7)
 
 def train(args):
-    print('Loading dataset from: {}'.format(args.cifar10), file=sys.stderr)
+    print('We will train for {}.'.format(args.cifar10), file=sys.stderr)
+    print('Loading dataset from: {}...'.format(args.cifar10), file=sys.stderr)
 
     X_b1, y_b1 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_1'))
     X_b2, y_b2 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_2'))
