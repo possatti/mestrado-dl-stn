@@ -19,8 +19,7 @@ import sys
 import re
 import os
 
-from cifar_utils import load_batch, zuar_batch, batch_preprocessing,
-    generate_distorted_batches, BatchVisualizer
+import cifar_utils
 
 
 def create_baseline_model(input_shape=(64, 64, 3), output_dim=10):
@@ -118,16 +117,16 @@ np.random.seed(7)
 def train(args):
     print('Loading dataset from: {}'.format(args.cifar10), file=sys.stderr)
 
-    X_b1, y_b1 = load_batch(os.path.join(args.cifar10, 'data_batch_1'))
-    X_b2, y_b2 = load_batch(os.path.join(args.cifar10, 'data_batch_2'))
-    X_b3, y_b3 = load_batch(os.path.join(args.cifar10, 'data_batch_3'))
-    X_b4, y_b4 = load_batch(os.path.join(args.cifar10, 'data_batch_4'))
-    X_b5, y_b5 = load_batch(os.path.join(args.cifar10, 'data_batch_5'))
+    X_b1, y_b1 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_1'))
+    X_b2, y_b2 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_2'))
+    X_b3, y_b3 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_3'))
+    X_b4, y_b4 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_4'))
+    X_b5, y_b5 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_5'))
 
     X = np.concatenate([X_b1, X_b2, X_b3, X_b4, X_b5], axis=0)
     y = np.concatenate([y_b1, y_b2, y_b3, y_b4, y_b5], axis=0)
 
-    X, Y = batch_preprocessing(X, y)
+    X, Y = cifar_utils.batch_preprocessing(X, y)
 
     right_now = create_timestamp()
     for model_name, create_fn in MODELS.items():
@@ -143,7 +142,7 @@ def train(args):
                 model.fit(X, Y, validation_split=0.1, epochs=args.epochs,
                     batch_size=128, callbacks=[TensorBoard(log_dir=tb_logdir)])
             elif args.dataset == 'CIFAR-10-DISTORTED':
-                model.fit_generator(generate_distorted_batches(X, Y, batch_size=100),
+                model.fit_generator(cifar_utils.generate_distorted_batches(X, Y, batch_size=100),
                     steps_per_epoch=len(X)/100, epochs=args.epochs)
             else:
                 raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
@@ -152,13 +151,13 @@ def train(args):
 def evaluate(args):
     if args.dataset == 'CIFAR-10':
         print('Loading test data from: {}'.format(args.cifar10), file=sys.stderr)
-        X, y = load_batch(os.path.join(args.cifar10, 'test_batch'))
+        X, y = cifar_utils.load_batch(os.path.join(args.cifar10, 'test_batch'))
     elif args.dataset == 'CIFAR-10-DISTORTED':
         print('Loading test data from: {}'.format(args.cifar10_zuado), file=sys.stderr)
-        X, y = load_batch(os.path.join(args.cifar10_zuado, 'test_batch'))
+        X, y = cifar_utils.load_batch(os.path.join(args.cifar10_zuado, 'test_batch'))
     else:
         raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
-    X, Y = batch_preprocessing(X, y)
+    X, Y = cifar_utils.batch_preprocessing(X, y)
 
     for model_name, create_fn in MODELS.items():
         if model_name in args.allowed_models:
