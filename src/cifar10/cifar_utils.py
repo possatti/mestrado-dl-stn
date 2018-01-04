@@ -1,6 +1,3 @@
-from PIL import Image
-from keras.utils import to_categorical
-
 import matplotlib.pyplot as plt
 import numpy as np
 import random
@@ -37,6 +34,7 @@ def save_batch(batch_path, X, y):
 
 def batch_preprocessing(X, y):
     """Prepare batch for training."""
+    from keras.utils import to_categorical
     newX = X.astype('float32') / 255
     onehot = to_categorical(y, num_classes=10)
     return newX, onehot
@@ -72,6 +70,7 @@ class BatchVisualizer(object):
 
 def zuar_batch(X, rotation_range=60, horizontal_flip=True,
     horizontal_translation_range=20, vertical_translation_range=20):
+    from PIL import Image
     n_images = len(X)
     Xz = np.empty(shape=(n_images, 64,64,3), dtype=X.dtype)
 
