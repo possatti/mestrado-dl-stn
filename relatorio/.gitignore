@@ -1,0 +1,16 @@
+# Latex build
+*.pdf
+*.aux
+*.blg
+*.idx
+*.log
+*.toc
+*.bbl
+*.brf
+*.lof
+*.lot
+*_latexmk
+*.fls
+*.ilg
+*.ind
+*.synctex.*
