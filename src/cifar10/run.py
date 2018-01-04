@@ -131,17 +131,21 @@ def train(args):
     for model_name, create_fn in MODELS.items():
         if model_name in args.allowed_models:
             tb_logdir = os.path.join(args.tensorboard_dir, model_name)
-            model_def_path = os.path.join(args.trained_dir, '{}_{}.json'.format(model_name, right_now))
-            model_weights_path = os.path.join(args.trained_dir, '{}_{}.hd5'.format(model_name, right_now))
+            model_def_path = os.path.join(args.trained_dir, '{}_{}_{}.json'.format(args.dataset, model_name, right_now))
+            model_weights_path = os.path.join(args.trained_dir, '{}_{}_{}.hd5'.format(args.dataset, model_name, right_now))
 
-            print('Creating {} model...'.format(model_name))
-            model = create_fn(input_shape=(32,32,3), output_dim=10)
-            print('Training {} model on {}...'.format(model_name, args.dataset))
             if args.dataset == 'CIFAR-10':
+                print('Creating {} model...'.format(model_name))
+                model = create_fn(input_shape=(32,32,3), output_dim=10)
+                print('Preprocessing batch...'.format(model_name, args.dataset))
                 X, Y = cifar_utils.batch_preprocessing(X, y)
+                print('Training {} model on {}...'.format(model_name, args.dataset))
                 model.fit(X, Y, validation_split=0.1, epochs=args.epochs,
                     batch_size=128, callbacks=[TensorBoard(log_dir=tb_logdir)])
             elif args.dataset == 'CIFAR-10-DISTORTED':
+                print('Creating {} model...'.format(model_name))
+                model = create_fn(input_shape=(64,64,3), output_dim=10)
+                print('Training {} model on {}...'.format(model_name, args.dataset))
                 model.fit_generator(cifar_utils.generate_distorted_batches(X, y, batch_size=100),
                     steps_per_epoch=len(X)/100, epochs=args.epochs)
             else:
@@ -164,13 +168,18 @@ def evaluate(args):
             # Find last trained model.
             weights_filepath = None
             for filename in os.listdir(args.trained_dir):
-                if re.match(r'{}_.*\.hd5'.format(model_name), filename):
+                if re.match(r'{}_{}_.*\.hd5'.format(args.dataset, model_name), filename):
                     weights_filepath = os.path.join(args.trained_dir, filename)
 
             # Evaluate if a trained model is found.
             if weights_filepath:
                 print('Creating {} model...'.format(model_name))
-                model = create_fn(input_shape=(32,32,3), output_dim=10)
+                if args.dataset == 'CIFAR-10':
+                    model = create_fn(input_shape=(32,32,3), output_dim=10)
+                elif args.dataset == 'CIFAR-10-DISTORTED':
+                    model = create_fn(input_shape=(64,64,3), output_dim=10)
+                else:
+                    raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
                 print('Loading {} weights...'.format(model_name))
                 model.load_weights(weights_filepath)
                 print('Evaluating {}...'.format(model_name))
