@@ -19,7 +19,8 @@ import sys
 import re
 import os
 
-from cifar_utils import load_batch, zuar_batch, batch_preprocessing, BatchVisualizer
+from cifar_utils import load_batch, zuar_batch, batch_preprocessing,
+    generate_distorted_batches, BatchVisualizer
 
 
 def create_baseline_model(input_shape=(64, 64, 3), output_dim=10):
@@ -101,6 +102,11 @@ def load_model(model_path, weights_path):
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model
 
+DATASETS = [
+    'CIFAR-10',
+    'CIFAR-10-DISTORTED',
+]
+
 MODELS = {
     'baseline': create_baseline_model,
     'stn': create_stn_model,
@@ -132,14 +138,26 @@ def train(args):
 
             print('Creating {} model...'.format(model_name))
             model = create_fn(input_shape=(32,32,3), output_dim=10)
-            print('Training {} model...'.format(model_name))
-            model.fit(X, Y, validation_split=0.1, epochs=args.epochs,
-                batch_size=128, callbacks=[TensorBoard(log_dir=tb_logdir)])
+            print('Training {} model on {}...'.format(model_name, args.dataset))
+            if args.dataset == 'CIFAR-10':
+                model.fit(X, Y, validation_split=0.1, epochs=args.epochs,
+                    batch_size=128, callbacks=[TensorBoard(log_dir=tb_logdir)])
+            elif args.dataset == 'CIFAR-10-DISTORTED':
+                model.fit_generator(generate_distorted_batches(X, Y, batch_size=100),
+                    steps_per_epoch=len(X)/100, epochs=args.epochs)
+            else:
+                raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
             save_model(model, model_def_path, model_weights_path)
 
 def evaluate(args):
-    print('Loading test data from: {}'.format(args.cifar10), file=sys.stderr)
-    X, y = load_batch(os.path.join(args.cifar10, 'test_batch'))
+    if args.dataset == 'CIFAR-10':
+        print('Loading test data from: {}'.format(args.cifar10), file=sys.stderr)
+        X, y = load_batch(os.path.join(args.cifar10, 'test_batch'))
+    elif args.dataset == 'CIFAR-10-DISTORTED':
+        print('Loading test data from: {}'.format(args.cifar10_zuado), file=sys.stderr)
+        X, y = load_batch(os.path.join(args.cifar10_zuado, 'test_batch'))
+    else:
+        raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
     X, Y = batch_preprocessing(X, y)
 
     for model_name, create_fn in MODELS.items():
@@ -150,6 +168,7 @@ def evaluate(args):
                 if re.match(r'{}_.*\.hd5'.format(model_name), filename):
                     weights_filepath = os.path.join(args.trained_dir, filename)
 
+            # Evaluate if a trained model is found.
             if weights_filepath:
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(32,32,3), output_dim=10)
@@ -197,6 +216,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--cifar10', default=default_cifar10_dir)
     parser.add_argument('--cifar10-zuado', default=default_cifar10_zuado_dir)
+    parser.add_argument('--dataset', choices=DATASETS, default='CIFAR-10-DISTORTED',
+        help='Which dataset to use. The pure CIFAR-10, or the one with distortions. (Default: CIFAR-10-DISTORTED)')
     parser.add_argument('--tensorboard-dir', default=default_tensorboard_dir)
     parser.add_argument('--trained-dir', default=default_trained_models_dir,
         help='Directory where the trained models will be saves or loaded from.')
