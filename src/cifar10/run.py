@@ -5,7 +5,7 @@ from __future__ import print_function, division
 from keras import backend as K
 from keras.utils import to_categorical
 from keras.models import Sequential, model_from_json
-from keras.callbacks import TensorBoard
+from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 from spatial_transformer import SpatialTransformer
@@ -142,8 +142,11 @@ def train(args):
         if model_name in args.allowed_models:
             model_def_path = os.path.join(args.trained_dir, '{}_{}_{}.json'.format(args.dataset, model_name, training_start))
             model_weights_path = os.path.join(args.trained_dir, '{}_{}_{}.hd5'.format(args.dataset, model_name, training_start))
-            tb_logdir = os.path.join(args.tensorboard_log_dir, '{}_{}'.format(model_name, training_start))
+            tb_logdir = os.path.join(args.tensorboard_log_dir, '{}_{}_{}'.format(args.dataset, model_name, training_start))
             tb_callback = TensorBoard(log_dir=tb_logdir, histogram_freq=1)
+            checkpoint_filepath = os.path.join(args.checkpoints_dir, '{}_{}_{}_EP{}.hd5'.format(args.dataset, model_name, training_start, '{epoch:02d}'))
+            checkpoint_cb = ModelCheckpoint(checkpoint_filepath, monitor='val_loss',
+                save_best_only=False, save_weights_only=True, period=1)
 
             if args.dataset == 'CIFAR-10':
                 print('Creating {} model...'.format(model_name))
@@ -162,7 +165,7 @@ def train(args):
             model.fit_generator(
                 generator=batch_generator, steps_per_epoch=len(X_train)/args.batch_size,
                 validation_data=cifar_utils.batch_preprocessing(X_valid, y_valid),
-                epochs=args.epochs, callbacks=[tb_callback])
+                epochs=args.epochs, callbacks=[tb_callback, checkpoint_cb])
             end = time.time()
             duration = datetime.timedelta(seconds=end-begin)
             print('Training of {} lasted {}.'.format(model_name, duration))
@@ -259,6 +262,7 @@ if __name__ == '__main__':
     default_cifar10_zuado_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'cifar-10-zuado'))
     default_trained_models_dir = os.path.join(os.path.dirname(__file__), 'trained')
     default_tensorboard_log_dir = os.path.join(os.path.dirname(__file__), 'tblogs')
+    default_checkpoints_dir = os.path.join(os.path.dirname(__file__), 'checkpoints')
 
     # Arguments and options.
     parser = argparse.ArgumentParser(description='')
@@ -267,6 +271,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', choices=DATASETS, default='CIFAR-10-DISTORTED',
         help='Which dataset to use. The pure CIFAR-10, or the one with distortions. (Default: CIFAR-10-DISTORTED)')
     parser.add_argument('--tensorboard-log-dir', default=default_tensorboard_log_dir)
+    parser.add_argument('--checkpoints-dir', default=default_checkpoints_dir)
     parser.add_argument('--trained-dir', default=default_trained_models_dir,
         help='Directory where the trained models will be saves or loaded from.')
     parser.add_argument('--only', action='append', choices=MODELS, help='Only run these models.')
