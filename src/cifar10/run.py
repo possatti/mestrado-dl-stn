@@ -137,6 +137,8 @@ def train(args):
         test_size=0.1, random_state=7)
     del X, y
 
+    X_valid_distorted = cifar_utils.zuar_batch(X_valid)
+
     training_start = create_timestamp()
     for model_name, create_fn in MODELS.items():
         if model_name in args.allowed_models:
@@ -156,12 +158,11 @@ def train(args):
             else:
                 raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
             batch_generator = cifar_utils.generate_batches(X_train, y_train, distort=distort_data, batch_size=args.batch_size)
-            validation_generator = cifar_utils.generate_batches(X_valid, y_valid, distort=distort_data, batch_size=args.batch_size)
             print('Training {} model on {}...'.format(model_name, args.dataset))
             begin = time.time()
             model.fit_generator(
                 generator=batch_generator, steps_per_epoch=len(X_train)/args.batch_size,
-                validation_data=validation_generator, validation_steps=len(X_valid)/args.batch_size,
+                validation_data=cifar_utils.batch_preprocessing(X_valid_distorted, y_valid),
                 epochs=args.epochs, callbacks=[tb_callback])
             end = time.time()
             duration = datetime.timedelta(seconds=end-begin)
@@ -276,7 +277,7 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(help='Available commands.', dest='command')
     train_parser = subparsers.add_parser('train', help='Train models.')
     train_parser.add_argument('--batch-size', type=int, default=100)
-    train_parser.add_argument('--epochs', type=int, default=10)
+    train_parser.add_argument('--epochs', '-e', type=int, default=10)
     evaluate_parser = subparsers.add_parser('evaluate', help='Evaluate models on test data.')
     visualize_parser = subparsers.add_parser('visualize', help='Visualize transformation through the STN.')
 
