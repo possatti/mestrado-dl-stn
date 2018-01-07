@@ -137,23 +137,19 @@ def train(args):
             model_def_path = os.path.join(args.trained_dir, '{}_{}_{}.json'.format(args.dataset, model_name, right_now))
             model_weights_path = os.path.join(args.trained_dir, '{}_{}_{}.hd5'.format(args.dataset, model_name, right_now))
 
-            begin = time.time()
             if args.dataset == 'CIFAR-10':
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(32,32,3), output_dim=10)
-                print('Preprocessing batch...'.format(model_name, args.dataset))
-                X, Y = cifar_utils.batch_preprocessing(X, y)
-                print('Training {} model on {}...'.format(model_name, args.dataset))
-                model.fit(X, Y, validation_split=0.1, epochs=args.epochs,
-                    batch_size=128, callbacks=[TensorBoard(log_dir=tb_logdir)])
+                batch_generator = generate_batches(X, y, distort=False, batch_size=args.batch_size)
             elif args.dataset == 'CIFAR-10-DISTORTED':
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(64,64,3), output_dim=10)
-                print('Training {} model on {}...'.format(model_name, args.dataset))
-                model.fit_generator(cifar_utils.generate_distorted_batches(X, y, batch_size=100),
-                    steps_per_epoch=len(X)/100, epochs=args.epochs)
+                batch_generator = generate_batches(X, y, distort=True, batch_size=args.batch_size)
             else:
                 raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
+            print('Training {} model on {}...'.format(model_name, args.dataset))
+            begin = time.time()
+            model.fit_generator(batch_generator, steps_per_epoch=len(X)/args.batch_size, epochs=args.epochs)
             end = time.time()
             duration = datetime.timedelta(seconds=end-begin)
             print('Training of {} lasted {}.'.format(model_name, duration))
@@ -266,6 +262,7 @@ if __name__ == '__main__':
     # Commands.
     subparsers = parser.add_subparsers(help='Available commands.', dest='command')
     train_parser = subparsers.add_parser('train', help='Train models.')
+    train_parser.add_argument('--batch-size', type=int, default=100)
     train_parser.add_argument('--epochs', type=int, default=10)
     evaluate_parser = subparsers.add_parser('evaluate', help='Evaluate models on test data.')
     visualize_parser = subparsers.add_parser('visualize', help='Visualize transformation through the STN.')
