@@ -104,9 +104,10 @@ def zuar_batch(X, rotation_range=60, horizontal_flip=True,
 
     return Xz
 
-def generate_distorted_batches(X, y, batch_size=100, preprocess=True):
-    X = zuar_batch(X)
+def generate_batches(X, y, distort=False, batch_size=100, preprocess=True):
     assert len(X) % batch_size == 0, 'ERR:  Total size should be multiple of batch size!'
+    if distort:
+        X = zuar_batch(X)
     while True:
         for i in range(0, len(X), batch_size):
             batch_begin = i
