@@ -122,16 +122,22 @@ def train(args):
     print('We will train for {}.'.format(args.cifar10), file=sys.stderr)
     print('Loading dataset from: {}...'.format(args.cifar10), file=sys.stderr)
 
-    X_b1, y_b1 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_1'))
-    X_b2, y_b2 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_2'))
-    X_b3, y_b3 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_3'))
-    X_b4, y_b4 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_4'))
-    X_b5, y_b5 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_5'))
+    if args.cheap:
+        print('Loading just a few images...', file=sys.stderr)
+        X, y = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_1'))
+        X = X[:1000]
+        y = y[:1000]
+    else:
+        X_b1, y_b1 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_1'))
+        X_b2, y_b2 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_2'))
+        X_b3, y_b3 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_3'))
+        X_b4, y_b4 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_4'))
+        X_b5, y_b5 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_5'))
 
-    X = np.concatenate([X_b1, X_b2, X_b3, X_b4, X_b5], axis=0)
-    y = np.concatenate([y_b1, y_b2, y_b3, y_b4, y_b5], axis=0)
-    del X_b1, X_b2, X_b3, X_b4, X_b5
-    del y_b1, y_b2, y_b3, y_b4, y_b5
+        X = np.concatenate([X_b1, X_b2, X_b3, X_b4, X_b5], axis=0)
+        y = np.concatenate([y_b1, y_b2, y_b3, y_b4, y_b5], axis=0)
+        del X_b1, X_b2, X_b3, X_b4, X_b5
+        del y_b1, y_b2, y_b3, y_b4, y_b5
 
     X_train, X_valid, y_train, y_valid = train_test_split(X, y,
         test_size=0.1, random_state=7)
@@ -282,6 +288,8 @@ if __name__ == '__main__':
     train_parser = subparsers.add_parser('train', help='Train models.')
     train_parser.add_argument('--batch-size', type=int, default=100)
     train_parser.add_argument('--epochs', '-e', type=int, default=10)
+    train_parser.add_argument('--cheap', action='store_true',
+        help='Train only with a few images, to test for crashes or anything.')
     evaluate_parser = subparsers.add_parser('evaluate', help='Evaluate models on test data.')
     visualize_parser = subparsers.add_parser('visualize', help='Visualize transformation through the STN.')
 
@@ -302,6 +310,11 @@ if __name__ == '__main__':
         args.input_shape = (64,64,3)
     else:
         raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
+
+    # Create necessary directories.
+    os.makedirs(args.trained_dir, exist_ok=True)
+    os.makedirs(args.tensorboard_log_dir, exist_ok=True)
+    os.makedirs(args.checkpoints_dir, exist_ok=True)
 
     # Run command.
     if not args.command:
