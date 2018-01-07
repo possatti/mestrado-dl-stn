@@ -4,6 +4,7 @@ _pycache__/
 
 # Ignore trained models.
 trained/
+checkpoints/
 
 # Ignore Tensorboard logs.
 tblogs/
