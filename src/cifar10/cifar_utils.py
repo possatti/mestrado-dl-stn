@@ -106,13 +106,14 @@ def zuar_batch(X, rotation_range=60, horizontal_flip=True,
 
 def generate_batches(X, y, distort=False, batch_size=100, preprocess=True):
     assert len(X) % batch_size == 0, 'ERR:  Total size should be multiple of batch size!'
-    if distort:
-        X = zuar_batch(X)
     while True:
+        Xz = X
+        if distort:
+            Xz = zuar_batch(X)
         for i in range(0, len(X), batch_size):
             batch_begin = i
             batch_end = i + batch_size
             if preprocess:
-                yield batch_preprocessing(X[batch_begin:batch_end], y[batch_begin:batch_end])
+                yield batch_preprocessing(Xz[batch_begin:batch_end], y[batch_begin:batch_end])
             else:
-                yield (X[batch_begin:batch_end], y[batch_begin:batch_end])
+                yield (Xz[batch_begin:batch_end], y[batch_begin:batch_end])
