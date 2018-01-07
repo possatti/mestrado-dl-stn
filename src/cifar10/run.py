@@ -24,6 +24,8 @@ import cifar_utils
 
 
 def create_baseline_model(input_shape=(64, 64, 3), output_dim=10):
+    # Copied from:
+    #  - http://parneetk.github.io/blog/cnn-cifar10/#convolutional-neural-network-for-cifar-10-dataset
     model = Sequential()
     # model.add(Input(shape=input_shape)) # Does this work?
     model.add(Conv2D(48, (3, 3), activation='relu', padding='same', input_shape=input_shape))
@@ -157,6 +159,13 @@ def train(args):
             print('Training of {} lasted {}.'.format(model_name, duration))
             save_model(model, model_def_path, model_weights_path)
 
+def find_last_trained_model(trained_dir, dataset_str, model_name):
+    weights_filepath = None
+    for filename in os.listdir(trained_dir):
+        if re.match(r'{}_{}_.*\.hd5'.format(dataset_str, model_name), filename):
+            weights_filepath = os.path.join(trained_dir, filename)
+    return weights_filepath
+
 def evaluate(args):
     if args.dataset == 'CIFAR-10':
         print('Loading test data from: {}'.format(args.cifar10), file=sys.stderr)
@@ -171,20 +180,12 @@ def evaluate(args):
     for model_name, create_fn in MODELS.items():
         if model_name in args.allowed_models:
             # Find last trained model.
-            weights_filepath = None
-            for filename in os.listdir(args.trained_dir):
-                if re.match(r'{}_{}_.*\.hd5'.format(args.dataset, model_name), filename):
-                    weights_filepath = os.path.join(args.trained_dir, filename)
+            weights_filepath = find_last_trained_model(args.trained_dir, args.dataset, model_name)
 
             # Evaluate if a trained model is found.
             if weights_filepath:
                 print('Creating {} model...'.format(model_name))
-                if args.dataset == 'CIFAR-10':
-                    model = create_fn(input_shape=(32,32,3), output_dim=10)
-                elif args.dataset == 'CIFAR-10-DISTORTED':
-                    model = create_fn(input_shape=(64,64,3), output_dim=10)
-                else:
-                    raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
+                model = create_fn(input_shape=args.input_shape, output_dim=10)
                 print('Loading {} weights...'.format(model_name))
                 model.load_weights(weights_filepath)
                 print('Evaluating {}...'.format(model_name))
@@ -201,26 +202,47 @@ def evaluate(args):
                 print('Could not find trained model for "{}". Skipping.'.format(model_name))
 
 def visualize(args):
-    pass_through_st = K.function([stn.input], [stn.layers[0].output])
+    if args.dataset == 'CIFAR-10':
+        print('Loading test data from: {}'.format(args.cifar10), file=sys.stderr)
+        X, y = cifar_utils.load_batch(os.path.join(args.cifar10, 'test_batch'))
+    elif args.dataset == 'CIFAR-10-DISTORTED':
+        print('Loading test data from: {}'.format(args.cifar10_zuado), file=sys.stderr)
+        X, y = cifar_utils.load_batch(os.path.join(args.cifar10_zuado, 'test_batch'))
+    else:
+        raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
+    X, Y = cifar_utils.batch_preprocessing(X, y)
 
-    samples = X_test[:25]
-    samples_transformed = pass_through_st([samples.astype('float32')])
+    # Find last trained STN model.
+    weights_filepath = find_last_trained_model(args.trained_dir, args.dataset, 'stn')
+    if weights_filepath:
+        print('Creating stn model...')
+        stn = create_stn_model(input_shape=args.input_shape, output_dim=10)
+        print('Loading stn weights...')
+        stn.load_weights(weights_filepath)
 
-    # Input images.
-    for i in range(25):
-        plt.subplot(5, 5, i+1)
-        plt.imshow(np.squeeze(samples[i]), cmap='gray')
-        plt.title('Label: {}'.format(np.argmax(Y_test[i])))
-        plt.axis('off')
-    plt.show()
+        pass_through_st = K.function([stn.input], [stn.layers[0].output])
 
-    # Output from STN.
-    for i in range(25):
-        plt.subplot(5, 5, i+1)
-        plt.imshow(np.squeeze(samples_transformed[0][i]), cmap='gray')
-        plt.title('Label: {}'.format(np.argmax(Y_test[i])))
-        plt.axis('off')
-    plt.show()
+        samples = X[:25]
+        samples_transformed = pass_through_st([samples.astype('float32')])
+
+        # Input images.
+        for i in range(25):
+            plt.subplot(5, 5, i+1)
+            plt.imshow(np.squeeze(samples[i]), cmap='gray')
+            plt.title('Label: {}'.format(y[i]))
+            plt.axis('off')
+        plt.show()
+
+        # Output from STN.
+        for i in range(25):
+            plt.subplot(5, 5, i+1)
+            plt.imshow(np.squeeze(samples_transformed[0][i]), cmap='gray')
+            plt.title('Label: {}'.format(y[i]))
+            plt.axis('off')
+        plt.show()
+    else:
+        print('No trained model found for STN.')
+
 
 if __name__ == '__main__':
     # Defaults.
@@ -257,6 +279,14 @@ if __name__ == '__main__':
         args.allowed_models = list(filter(lambda name: name not in args.skip, args.allowed_models))
     if args.only:
         args.allowed_models = list(filter(lambda name: name in args.only, args.allowed_models))
+
+    # Define the input shape.
+    if args.dataset == 'CIFAR-10':
+        args.input_shape = (32,32,3)
+    elif args.dataset == 'CIFAR-10-DISTORTED':
+        args.input_shape = (64,64,3)
+    else:
+        raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
 
     # Run command.
     if not args.command:
