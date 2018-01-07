@@ -130,26 +130,28 @@ def train(args):
     X = np.concatenate([X_b1, X_b2, X_b3, X_b4, X_b5], axis=0)
     y = np.concatenate([y_b1, y_b2, y_b3, y_b4, y_b5], axis=0)
 
-    right_now = create_timestamp()
+    training_start = create_timestamp()
     for model_name, create_fn in MODELS.items():
         if model_name in args.allowed_models:
-            tb_logdir = os.path.join(args.tensorboard_dir, model_name)
-            model_def_path = os.path.join(args.trained_dir, '{}_{}_{}.json'.format(args.dataset, model_name, right_now))
-            model_weights_path = os.path.join(args.trained_dir, '{}_{}_{}.hd5'.format(args.dataset, model_name, right_now))
+            model_def_path = os.path.join(args.trained_dir, '{}_{}_{}.json'.format(args.dataset, model_name, training_start))
+            model_weights_path = os.path.join(args.trained_dir, '{}_{}_{}.hd5'.format(args.dataset, model_name, training_start))
+            tb_logdir = os.path.join(args.tensorboard_log_dir, '{}_{}'.format(model_name, training_start))
+            tb_callback = TensorBoard(log_dir=tb_logdir, histogram_freq=1)
 
             if args.dataset == 'CIFAR-10':
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(32,32,3), output_dim=10)
-                batch_generator = generate_batches(X, y, distort=False, batch_size=args.batch_size)
+                batch_generator = cifar_utils.generate_batches(X, y, distort=False, batch_size=args.batch_size)
             elif args.dataset == 'CIFAR-10-DISTORTED':
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(64,64,3), output_dim=10)
-                batch_generator = generate_batches(X, y, distort=True, batch_size=args.batch_size)
+                batch_generator = cifar_utils.generate_batches(X, y, distort=True, batch_size=args.batch_size)
             else:
                 raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
             print('Training {} model on {}...'.format(model_name, args.dataset))
             begin = time.time()
-            model.fit_generator(batch_generator, steps_per_epoch=len(X)/args.batch_size, epochs=args.epochs)
+            model.fit_generator(batch_generator, steps_per_epoch=len(X)/args.batch_size,
+                epochs=args.epochs, callbacks=[tb_callback])
             end = time.time()
             duration = datetime.timedelta(seconds=end-begin)
             print('Training of {} lasted {}.'.format(model_name, duration))
@@ -245,7 +247,7 @@ if __name__ == '__main__':
     default_cifar10_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'cifar-10-batches-py'))
     default_cifar10_zuado_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'cifar-10-zuado'))
     default_trained_models_dir = os.path.join(os.path.dirname(__file__), 'trained')
-    default_tensorboard_dir = os.path.join(os.path.dirname(__file__), 'logs')
+    default_tensorboard_log_dir = os.path.join(os.path.dirname(__file__), 'tblogs')
 
     # Arguments and options.
     parser = argparse.ArgumentParser(description='')
@@ -253,7 +255,7 @@ if __name__ == '__main__':
     parser.add_argument('--cifar10-zuado', default=default_cifar10_zuado_dir)
     parser.add_argument('--dataset', choices=DATASETS, default='CIFAR-10-DISTORTED',
         help='Which dataset to use. The pure CIFAR-10, or the one with distortions. (Default: CIFAR-10-DISTORTED)')
-    parser.add_argument('--tensorboard-dir', default=default_tensorboard_dir)
+    parser.add_argument('--tensorboard-log-dir', default=default_tensorboard_log_dir)
     parser.add_argument('--trained-dir', default=default_trained_models_dir,
         help='Directory where the trained models will be saves or loaded from.')
     parser.add_argument('--only', action='append', choices=MODELS, help='Only run these models.')
