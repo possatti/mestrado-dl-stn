@@ -66,8 +66,8 @@ def create_stn_model(input_shape=(64, 64, 3), output_dim=10):
 
     model = Sequential()
     model.add(SpatialTransformer(localization_net=locnet,
-                             output_size=(64,64), input_shape=input_shape))
-    model.add(Conv2D(48, (3, 3), activation='relu', padding='same', input_shape=input_shape))
+                             output_size=input_shape[:-1], input_shape=input_shape))
+    model.add(Conv2D(48, (3, 3), activation='relu', padding='same'))
     model.add(Conv2D(48, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(96, (3, 3), activation='relu', padding='same'))
@@ -137,8 +137,6 @@ def train(args):
         test_size=0.1, random_state=7)
     del X, y
 
-    X_valid_distorted = cifar_utils.zuar_batch(X_valid)
-
     training_start = create_timestamp()
     for model_name, create_fn in MODELS.items():
         if model_name in args.allowed_models:
@@ -155,6 +153,7 @@ def train(args):
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(64,64,3), output_dim=10)
                 distort_data = True
+                X_valid = cifar_utils.zuar_batch(X_valid)
             else:
                 raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
             batch_generator = cifar_utils.generate_batches(X_train, y_train, distort=distort_data, batch_size=args.batch_size)
@@ -162,7 +161,7 @@ def train(args):
             begin = time.time()
             model.fit_generator(
                 generator=batch_generator, steps_per_epoch=len(X_train)/args.batch_size,
-                validation_data=cifar_utils.batch_preprocessing(X_valid_distorted, y_valid),
+                validation_data=cifar_utils.batch_preprocessing(X_valid, y_valid),
                 epochs=args.epochs, callbacks=[tb_callback])
             end = time.time()
             duration = datetime.timedelta(seconds=end-begin)
