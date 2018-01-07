@@ -9,6 +9,7 @@ from keras.callbacks import TensorBoard
 from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 from spatial_transformer import SpatialTransformer
+from sklearn.model_selection import train_test_split
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -129,6 +130,12 @@ def train(args):
 
     X = np.concatenate([X_b1, X_b2, X_b3, X_b4, X_b5], axis=0)
     y = np.concatenate([y_b1, y_b2, y_b3, y_b4, y_b5], axis=0)
+    del X_b1, X_b2, X_b3, X_b4, X_b5
+    del y_b1, y_b2, y_b3, y_b4, y_b5
+
+    X_train, X_valid, y_train, y_valid = train_test_split(X, y,
+        test_size=0.1, random_state=7)
+    del X, y
 
     training_start = create_timestamp()
     for model_name, create_fn in MODELS.items():
@@ -141,16 +148,20 @@ def train(args):
             if args.dataset == 'CIFAR-10':
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(32,32,3), output_dim=10)
-                batch_generator = cifar_utils.generate_batches(X, y, distort=False, batch_size=args.batch_size)
+                distort_data = False
             elif args.dataset == 'CIFAR-10-DISTORTED':
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(64,64,3), output_dim=10)
-                batch_generator = cifar_utils.generate_batches(X, y, distort=True, batch_size=args.batch_size)
+                distort_data = True
             else:
                 raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
+            batch_generator = cifar_utils.generate_batches(X_train, y_train, distort=distort_data, batch_size=args.batch_size)
+            validation_generator = cifar_utils.generate_batches(X_valid, y_valid, distort=distort_data, batch_size=args.batch_size)
             print('Training {} model on {}...'.format(model_name, args.dataset))
             begin = time.time()
-            model.fit_generator(batch_generator, steps_per_epoch=len(X)/args.batch_size,
+            model.fit_generator(
+                generator=batch_generator, steps_per_epoch=len(X_train)/args.batch_size,
+                validation_data=validation_generator, validation_steps=len(X_valid)/args.batch_size,
                 epochs=args.epochs, callbacks=[tb_callback])
             end = time.time()
             duration = datetime.timedelta(seconds=end-begin)
