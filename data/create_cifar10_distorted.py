@@ -5,7 +5,6 @@ from __future__ import print_function, division
 from PIL import Image
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
 import requests
 import argparse
@@ -16,6 +15,12 @@ import math
 import sys
 import re
 import os
+
+try:
+    import pandas as pd
+    USE_PANDAS = True
+except:
+    USE_PANDAS = False
 
 try:
     import cPickle as pickle
@@ -68,7 +73,11 @@ def build(args):
         X, y = cifar_utils.load_batch(os.path.join(CIFAR_10_DIR, 'test_batch'))
         Xz, params = cifar_utils.distort_batch(X, horizontal_flip=False, return_parameters=True)
         cifar_utils.save_batch(os.path.join(CIFAR_10_DISTORTED_DIR, 'test_batch'), Xz, y)
-        pd.DataFrame(params).to_csv(os.path.join(CIFAR_10_DISTORTED_DIR, 'test_batch_params.csv'), index=False)
+        print("CIFAR-10-DISTORTED created.", file=sys.stderr)
+        if USE_PANDAS:
+            params_filepath = os.path.join(CIFAR_10_DISTORTED_DIR, 'test_batch_params.csv')
+            print("Saving distortions parameters to `{}`...".format(params_filepath), file=sys.stderr)
+            pd.DataFrame(params).to_csv(params_filepath, index=False)
     else:
         print("CIFAR-10-DISTORTED already present at: `{}`.".format(CIFAR_10_DISTORTED_DIR), file=sys.stderr)
 
