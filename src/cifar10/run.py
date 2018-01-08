@@ -125,8 +125,8 @@ def train(args):
     if args.cheap:
         print('Loading just a few images...', file=sys.stderr)
         X, y = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_1'))
-        X = X[:1000]
-        y = y[:1000]
+        X = X[:args.cheap]
+        y = y[:args.cheap]
     else:
         X_b1, y_b1 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_1'))
         X_b2, y_b2 = cifar_utils.load_batch(os.path.join(args.cifar10, 'data_batch_2'))
@@ -143,34 +143,31 @@ def train(args):
         test_size=0.1, random_state=7)
     del X, y
 
+    if args.dataset == 'CIFAR-10':
+        batch_generator = cifar_utils.generate_batches(X_train, y_train, distort=False, batch_size=args.batch_size)
+    elif args.dataset == 'CIFAR-10-DISTORTED':
+        X_valid = cifar_utils.distort_batch(X_valid)
+        batch_generator = cifar_utils.generate_batches(X_train, y_train, distort=True, batch_size=args.batch_size)
+    validation_data = cifar_utils.batch_preprocessing(X_valid, y_valid)
+
     training_start = create_timestamp()
     for model_name, create_fn in MODELS.items():
         if model_name in args.allowed_models:
             model_def_path = os.path.join(args.trained_dir, '{}_{}_{}.json'.format(args.dataset, model_name, training_start))
             model_weights_path = os.path.join(args.trained_dir, '{}_{}_{}.hd5'.format(args.dataset, model_name, training_start))
             tb_logdir = os.path.join(args.tensorboard_log_dir, '{}_{}_{}'.format(args.dataset, model_name, training_start))
-            tb_callback = TensorBoard(log_dir=tb_logdir, histogram_freq=1)
             checkpoint_filepath = os.path.join(args.checkpoints_dir, '{}_{}_{}_EP{}.hd5'.format(args.dataset, model_name, training_start, '{epoch:02d}'))
+            tb_callback = TensorBoard(log_dir=tb_logdir, histogram_freq=0)
             checkpoint_cb = ModelCheckpoint(checkpoint_filepath, monitor='val_loss',
                 save_best_only=False, save_weights_only=True, period=1)
 
-            if args.dataset == 'CIFAR-10':
-                print('Creating {} model...'.format(model_name))
-                model = create_fn(input_shape=(32,32,3), output_dim=10)
-                distort_data = False
-            elif args.dataset == 'CIFAR-10-DISTORTED':
-                print('Creating {} model...'.format(model_name))
-                model = create_fn(input_shape=(64,64,3), output_dim=10)
-                distort_data = True
-                X_valid = cifar_utils.distort_batch(X_valid)
-            else:
-                raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
-            batch_generator = cifar_utils.generate_batches(X_train, y_train, distort=distort_data, batch_size=args.batch_size)
+            print('Creating {} model...'.format(model_name))
+            model = create_fn(input_shape=args.input_shape, output_dim=10)
             print('Training {} model on {}...'.format(model_name, args.dataset))
             begin = time.time()
             model.fit_generator(
                 generator=batch_generator, steps_per_epoch=len(X_train)/args.batch_size,
-                validation_data=cifar_utils.batch_preprocessing(X_valid, y_valid),
+                validation_data=validation_data,
                 epochs=args.epochs, callbacks=[tb_callback, checkpoint_cb])
             end = time.time()
             duration = datetime.timedelta(seconds=end-begin)
@@ -286,9 +283,9 @@ if __name__ == '__main__':
     # Commands.
     subparsers = parser.add_subparsers(help='Available commands.', dest='command')
     train_parser = subparsers.add_parser('train', help='Train models.')
-    train_parser.add_argument('--batch-size', type=int, default=100)
+    train_parser.add_argument('--batch-size', '-b', type=int, default=100)
     train_parser.add_argument('--epochs', '-e', type=int, default=10)
-    train_parser.add_argument('--cheap', action='store_true',
+    train_parser.add_argument('--cheap', type=int, nargs='?', const=1000,
         help='Train only with a few images, to test for crashes or anything.')
     evaluate_parser = subparsers.add_parser('evaluate', help='Evaluate models on test data.')
     visualize_parser = subparsers.add_parser('visualize', help='Visualize transformation through the STN.')
