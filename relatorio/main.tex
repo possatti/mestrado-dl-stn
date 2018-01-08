@@ -44,7 +44,7 @@
 
 
 \begin{document}
-\title{Relatório sobre Spatial Transformer Networks}
+\title{Utilizando Spatial Transformer Networks}
 
 
 \author{\IEEEauthorblockN{Lucas Caetano Possatti}
@@ -62,55 +62,29 @@ Email: rafael.hdefreitas@gmail.com}}
 Escrever o resumo aqui.
 \end{abstract}
 
-% For peer review papers, you can put extra information on the cover
-% page as needed:
-% \ifCLASSOPTIONpeerreview
-% \begin{center} \bfseries EDICS Category: 3-BBND \end{center}
-% \fi
-%
+
 % For peerreview papers, this IEEEtran command inserts a page break and
 % creates the second title. It will be ignored for other modes.
 \IEEEpeerreviewmaketitle
 
+\section{Introdução}
+
+Redes Neurais Convolucionais (CNNs) estão sendo muito utilizadas para alcançar excelentes resultados na área de Visão Computacional. Porém sua habilidade de ser invariante espacialmente é muito limitada. O Spatial Transformer...
+
+\section{Trabalhos Correlatos}
+
+STN \cite{jaderberg2015spatial}.
+
+\section{Metodologia}
 
 
-\section{Introduction}
-% no \IEEEPARstart
-This demo file is intended to serve as a ``starter file''
-for IEEE conference papers produced under \LaTeX\ using
-IEEEtran.cls version 1.8b and later.
-% You must have at least 2 lines in the paragraph with the drop letter
-% (should never be an issue)
-I wish you the best of success.
-
-\hfill mds
-
-\hfill August 26, 2015
-
-\subsection{Subsection Heading Here}
-Subsection text here.
+\section{Experimentos}
 
 
-\subsubsection{Subsubsection Heading Here}
-Subsubsection text here.
-
-% Note that the IEEE does not put floats in the very first column
-% - or typically anywhere on the first page for that matter. Also,
-% in-text middle ("here") positioning is typically not used, but it
-% is allowed and encouraged for Computer Society conferences (but
-% not Computer Society journals). Most IEEE journals/conferences use
-% top floats exclusively.
-% Note that, LaTeX2e, unlike IEEE journals/conferences, places
-% footnotes above bottom floats. This can be corrected via the
-% \fnbelowfloat command of the stfloats package.
-
-
-\section{Conclusion}
-The conclusion goes here.
+\section{Resultados}
 
 
 % conference papers do not normally have an appendix
-
 
 % trigger a \newpage just before the given reference
 % number - used to balance the columns on the last page
@@ -134,13 +108,17 @@ The conclusion goes here.
 % <OR> manually copy in the resultant .bbl file
 % set second argument of \begin to the number of references
 % (used to reserve space for the reference number labels box)
-\begin{thebibliography}{1}
 
-\bibitem{IEEEhowto:kopka}
-H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
-  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
+% \begin{thebibliography}{1}
 
-\end{thebibliography}
+% \bibitem{IEEEhowto:kopka}
+% H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
+%   0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
+
+% \end{thebibliography}
+
+\bibliography{bibliography}
+\bibliographystyle{ieeetr}
 
 \end{document}
 
