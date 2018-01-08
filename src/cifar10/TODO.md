@@ -8,4 +8,4 @@ CIFAR-10 TODO
  - [x] Cria opção `--cheap` para treinar com poucas imagens.
  - [x] Mudar nomes de "zuado" para "distorted".
  - [x] Usar rotações de -20 à +20.
- - [ ] Pq treinar os dois modelos de uma vez está falhando?
+ - [x] Pq treinar os dois modelos de uma vez está falhando? (Era por causa de `histogram_freq=1`.)
