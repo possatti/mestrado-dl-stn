@@ -5,6 +5,7 @@ from __future__ import print_function, division
 from PIL import Image
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
 import requests
 import argparse
@@ -22,7 +23,7 @@ except:
     import pickle
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'cifar10'))
-from cifar_utils import load_batch, save_batch, zuar_batch, BatchVisualizer
+import cifar_utils
 
 print(sys.version, file=sys.stderr)
 print('Numpy version:', np.version.version, file=sys.stderr)
@@ -35,7 +36,7 @@ CIFAR_10_TARGZ_FILEPATH = os.path.join(os.path.dirname(__file__), 'cifar-10-pyth
 CIFAR_10_UNPACKING_DIR = os.path.dirname(__file__)
 CIFAR_10_DIR = os.path.join(os.path.dirname(__file__), 'cifar-10-batches-py')
 
-CIFAR_10_ZUADO_DIR = os.path.join(os.path.dirname(__file__), 'cifar-10-zuado')
+CIFAR_10_DISTORTED_DIR = os.path.join(os.path.dirname(__file__), 'cifar-10-distorted')
 
 
 def build(args):
@@ -62,17 +63,18 @@ def build(args):
     # batch1_path = os.path.join(CIFAR_10_DIR, 'data_batch_1')
 
     # Mess with the test images.
-    if not os.path.isdir(CIFAR_10_ZUADO_DIR):
-        print("Creating CIFAR-10-ZUADO at: `{}`.".format(CIFAR_10_ZUADO_DIR), file=sys.stderr)
-        X, y = load_batch(os.path.join(CIFAR_10_DIR, 'test_batch'))
-        Xz = zuar_batch(X, horizontal_flip=False)
-        save_batch(os.path.join(CIFAR_10_ZUADO_DIR, 'test_batch'), Xz, y)
+    if not os.path.isdir(CIFAR_10_DISTORTED_DIR):
+        print("Creating CIFAR-10-DISTORTED at: `{}`.".format(CIFAR_10_DISTORTED_DIR), file=sys.stderr)
+        X, y = cifar_utils.load_batch(os.path.join(CIFAR_10_DIR, 'test_batch'))
+        Xz, params = cifar_utils.distort_batch(X, horizontal_flip=False, return_parameters=True)
+        cifar_utils.save_batch(os.path.join(CIFAR_10_DISTORTED_DIR, 'test_batch'), Xz, y)
+        pd.DataFrame(params).to_csv(os.path.join(CIFAR_10_DISTORTED_DIR, 'test_batch_params.csv'), index=False)
     else:
-        print("CIFAR-10-ZUADO already present at: `{}`.".format(CIFAR_10_ZUADO_DIR), file=sys.stderr)
+        print("CIFAR-10-DISTORTED already present at: `{}`.".format(CIFAR_10_DISTORTED_DIR), file=sys.stderr)
 
 def inspect(args):
-    X, y = load_batch(args.batch_path)
-    bv = BatchVisualizer(X, y, 2, 5)
+    X, y = cifar_utils.load_batch(args.batch_path)
+    bv = cifar_utils.BatchVisualizer(X, y, 2, 5)
     bv.show()
 
 def check(args):
@@ -80,21 +82,21 @@ def check(args):
     import datetime
     test_batch_path = os.path.join(CIFAR_10_DIR, 'test_batch')
     print('Loading test batch from {}...'.format(test_batch_path), file=sys.stderr)
-    X, y = load_batch(test_batch_path)
+    X, y = cifar_utils.load_batch(test_batch_path)
 
     # 10000 images using pillow.
     print('Applying distortions...', file=sys.stderr)
-    using_pillow_begin = time.time()
-    Xz = zuar_batch(X, horizontal_flip=False)
-    using_pillow_end = time.time()
-    dt_using_pillow = datetime.timedelta(seconds=using_pillow_end - using_pillow_begin)
+    begin = time.time()
+    Xz = cifar_utils.distort_batch(X, horizontal_flip=False)
+    end = time.time()
+    dt_using_pillow = datetime.timedelta(seconds=end-begin)
     print('It took {} to mess {} images, using pillow.'.format(dt_using_pillow, len(X)))
 
     # 128 images using pillow.
-    using_pillow_begin = time.time()
-    Xz = zuar_batch(X[:128,...], horizontal_flip=False)
-    using_pillow_end = time.time()
-    dt_using_pillow = datetime.timedelta(seconds=using_pillow_end - using_pillow_begin)
+    begin = time.time()
+    Xz = cifar_utils.distort_batch(X[:128,...], horizontal_flip=False)
+    end = time.time()
+    dt_using_pillow = datetime.timedelta(seconds=end-begin)
     print('It took {} to mess {} images, using pillow.'.format(dt_using_pillow, 128))
 
     # Compare original and distorted images, side by side.
@@ -116,7 +118,7 @@ if __name__ == '__main__':
         where the images are rotated and translated.""")
 
     subparsers = parser.add_subparsers(help='Available commands.', dest='command')
-    build_parser = subparsers.add_parser('build', help='Build the CIFAR-10 zuado dataset.')
+    build_parser = subparsers.add_parser('build', help='Build the CIFAR-10 distorted dataset.')
     check_parser = subparsers.add_parser('check', help='Check what the distortions are producing.')
     inspect_parser = subparsers.add_parser('inspect', help='Inspect batch.')
     inspect_parser.add_argument('batch_path')
