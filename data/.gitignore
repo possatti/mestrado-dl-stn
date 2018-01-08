@@ -2,4 +2,4 @@
 mnist_sequence1_sample_5distortions5x5.npz
 cifar-10-python.tar.gz
 cifar-10-batches-py/
-cifar-10-zuado/
+cifar-10-distorted/

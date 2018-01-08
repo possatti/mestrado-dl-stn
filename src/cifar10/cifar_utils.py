@@ -63,17 +63,19 @@ class BatchVisualizer(object):
         plt.gcf().canvas.draw_idle()
 
     def onclick(self, event):
-        if (self.page+2)*self.n_rows*n_cols <= len(self.X):
+        if (self.page+2)*self.n_rows*self.n_cols <= len(self.X):
             self.page += 1
             self.draw()
         print('Current page: {}'.format(self.page))
 
-def zuar_batch(X, rotation_range=60, horizontal_flip=True,
-    horizontal_translation_range=20, vertical_translation_range=20):
+def distort_batch(X, rotation_range=40, horizontal_flip=True,
+    horizontal_translation_range=20, vertical_translation_range=20,
+    return_parameters=False):
     from PIL import Image
     n_images = len(X)
     original_dtype = X.dtype
     Xz = np.empty(shape=(n_images, 64,64,3), dtype=original_dtype)
+    params = []
 
     if original_dtype != np.uint8:
         raise ValueError('dtype should be uint8, got dtype {}.'.format(original_dtype))
@@ -90,6 +92,9 @@ def zuar_batch(X, rotation_range=60, horizontal_flip=True,
         if horizontal_flip:
             do_flip = random.randint(0,1)
 
+        # Accumulate parameters used.
+        params.append({'angle_deg': angle_deg, 'tx': tx, 'ty': ty, 'hflip': do_flip})
+
         # Transform image.
         im_m = X[i,...]
         im = Image.fromarray(im_m)
@@ -102,14 +107,17 @@ def zuar_batch(X, rotation_range=60, horizontal_flip=True,
         newim_m = np.asarray(newim, dtype=np.uint8).reshape(64,64,3)
         Xz[i] = newim_m
 
-    return Xz
+    if return_parameters:
+        return Xz, params
+    else:
+        return Xz
 
 def generate_batches(X, y, distort=False, batch_size=100, preprocess=True):
     assert len(X) % batch_size == 0, 'ERR:  Total size should be multiple of batch size!'
     while True:
         Xz = X
         if distort:
-            Xz = zuar_batch(X)
+            Xz = distort_batch(X)
         for i in range(0, len(X), batch_size):
             batch_begin = i
             batch_end = i + batch_size

@@ -162,7 +162,7 @@ def train(args):
                 print('Creating {} model...'.format(model_name))
                 model = create_fn(input_shape=(64,64,3), output_dim=10)
                 distort_data = True
-                X_valid = cifar_utils.zuar_batch(X_valid)
+                X_valid = cifar_utils.distort_batch(X_valid)
             else:
                 raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
             batch_generator = cifar_utils.generate_batches(X_train, y_train, distort=distort_data, batch_size=args.batch_size)
@@ -189,8 +189,8 @@ def evaluate(args):
         print('Loading test data from: {}'.format(args.cifar10), file=sys.stderr)
         X, y = cifar_utils.load_batch(os.path.join(args.cifar10, 'test_batch'))
     elif args.dataset == 'CIFAR-10-DISTORTED':
-        print('Loading test data from: {}'.format(args.cifar10_zuado), file=sys.stderr)
-        X, y = cifar_utils.load_batch(os.path.join(args.cifar10_zuado, 'test_batch'))
+        print('Loading test data from: {}'.format(args.cifar10_distorted), file=sys.stderr)
+        X, y = cifar_utils.load_batch(os.path.join(args.cifar10_distorted, 'test_batch'))
     else:
         raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
     X, Y = cifar_utils.batch_preprocessing(X, y)
@@ -224,8 +224,8 @@ def visualize(args):
         print('Loading test data from: {}'.format(args.cifar10), file=sys.stderr)
         X, y = cifar_utils.load_batch(os.path.join(args.cifar10, 'test_batch'))
     elif args.dataset == 'CIFAR-10-DISTORTED':
-        print('Loading test data from: {}'.format(args.cifar10_zuado), file=sys.stderr)
-        X, y = cifar_utils.load_batch(os.path.join(args.cifar10_zuado, 'test_batch'))
+        print('Loading test data from: {}'.format(args.cifar10_distorted), file=sys.stderr)
+        X, y = cifar_utils.load_batch(os.path.join(args.cifar10_distorted, 'test_batch'))
     else:
         raise ValueError('You should choose one of these datasets: {}.'.format(', '.join(DATASETS)))
     X, Y = cifar_utils.batch_preprocessing(X, y)
@@ -265,7 +265,7 @@ def visualize(args):
 if __name__ == '__main__':
     # Defaults.
     default_cifar10_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'cifar-10-batches-py'))
-    default_cifar10_zuado_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'cifar-10-zuado'))
+    default_cifar10_distorted_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'cifar-10-distorted'))
     default_trained_models_dir = os.path.join(os.path.dirname(__file__), 'trained')
     default_tensorboard_log_dir = os.path.join(os.path.dirname(__file__), 'tblogs')
     default_checkpoints_dir = os.path.join(os.path.dirname(__file__), 'checkpoints')
@@ -273,7 +273,7 @@ if __name__ == '__main__':
     # Arguments and options.
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--cifar10', default=default_cifar10_dir)
-    parser.add_argument('--cifar10-zuado', default=default_cifar10_zuado_dir)
+    parser.add_argument('--cifar10-distorted', default=default_cifar10_distorted_dir)
     parser.add_argument('--dataset', choices=DATASETS, default='CIFAR-10-DISTORTED',
         help='Which dataset to use. The pure CIFAR-10, or the one with distortions. (Default: CIFAR-10-DISTORTED)')
     parser.add_argument('--tensorboard-log-dir', default=default_tensorboard_log_dir)
