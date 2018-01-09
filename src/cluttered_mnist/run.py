@@ -169,24 +169,40 @@ def main(args):
     if args.command == 'visualize':
         pass_through_st = K.function([stn.input], [stn.layers[0].output])
 
-        samples = X_test[:25]
+        rows = args.rows
+        cols = args.columns
+        num = rows*cols
+
+        samples = X_test[:num*2]
         samples_transformed = pass_through_st([samples.astype('float32')])
 
-        # Input images.
-        for i in range(25):
-            plt.subplot(5, 5, i+1)
-            plt.imshow(np.squeeze(samples[i]), cmap='gray')
-            plt.title('Label: {}'.format(np.argmax(Y_test[i])))
-            plt.axis('off')
-        plt.show()
+        if args.side_by_side:
+            for i in range(int(num)):
+                plt.subplot(rows, cols*2, i*2+1)
+                plt.imshow(np.squeeze(samples[i]), cmap='gray')
+                plt.title('{} (O.)'.format(np.argmax(Y_test[i])))
+                plt.axis('off')
+                plt.subplot(rows, cols*2, i*2+2)
+                plt.imshow(np.squeeze(samples_transformed[0][i]), cmap='gray')
+                plt.title('{} (T.)'.format(np.argmax(Y_test[i])))
+                plt.axis('off')
+            plt.show()
+        else:
+            # Input images.
+            for i in range(num):
+                plt.subplot(rows, cols, i+1)
+                plt.imshow(np.squeeze(samples[i]), cmap='gray')
+                plt.title('{}'.format(np.argmax(Y_test[i])))
+                plt.axis('off')
+            plt.show()
 
-        # Output from STN.
-        for i in range(25):
-            plt.subplot(5, 5, i+1)
-            plt.imshow(np.squeeze(samples_transformed[0][i]), cmap='gray')
-            plt.title('Label: {}'.format(np.argmax(Y_test[i])))
-            plt.axis('off')
-        plt.show()
+            # Output from STN.
+            for i in range(num):
+                plt.subplot(rows, cols, i+1)
+                plt.imshow(np.squeeze(samples_transformed[0][i]), cmap='gray')
+                plt.title('{}'.format(np.argmax(Y_test[i])))
+                plt.axis('off')
+            plt.show()
 
 if __name__ == '__main__':
     # Defaults.
@@ -209,8 +225,11 @@ if __name__ == '__main__':
 
     # Commands.
     subparsers = parser.add_subparsers(help='Available commands.', dest='command')
-    visualize_parser = subparsers.add_parser('visualize', help='Visualize transformation through the STN.')
     evaluate_parser = subparsers.add_parser('evaluate', help='Evaluate both models (may need training).')
+    visualize_parser = subparsers.add_parser('visualize', help='Visualize transformation through the STN.')
+    visualize_parser.add_argument('--rows', '-r', type=int, default=5)
+    visualize_parser.add_argument('--columns', '-c', type=int, default=5)
+    visualize_parser.add_argument('--side-by-side', action='store_true')
 
     # Parse arguments.
     args = parser.parse_args()
