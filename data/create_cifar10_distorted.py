@@ -83,7 +83,7 @@ def build(args):
 
 def inspect(args):
     X, y = cifar_utils.load_batch(args.batch_path)
-    bv = cifar_utils.BatchVisualizer(X, y, 2, 5)
+    bv = cifar_utils.BatchVisualizer(X, y, args.rows, args.columns)
     bv.show()
 
 def check(args):
@@ -131,6 +131,8 @@ if __name__ == '__main__':
     check_parser = subparsers.add_parser('check', help='Check what the distortions are producing.')
     inspect_parser = subparsers.add_parser('inspect', help='Inspect batch.')
     inspect_parser.add_argument('batch_path')
+    inspect_parser.add_argument('--rows', '-r', type=int, default=5)
+    inspect_parser.add_argument('--columns', '-c', type=int, default=5)
 
     args = parser.parse_args()
     if args.command == 'build': build(args)

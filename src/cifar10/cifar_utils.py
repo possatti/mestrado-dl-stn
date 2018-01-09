@@ -9,6 +9,8 @@ try:
 except:
     import pickle
 
+class_names = ['airplane','automobile','bird','cat','deer','dog','frog','horse','ship','truck']
+
 def load_batch(batch_path):
     with open(batch_path, 'rb') as f:
         batch = pickle.load(f, encoding='bytes')
@@ -59,6 +61,7 @@ class BatchVisualizer(object):
                 n = self.page*self.n_cols*self.n_rows + i*self.n_cols+j
                 self.axes[i,j].imshow(self.X[n])
                 self.axes[i,j].axis('off')
+                self.axes[i,j].set_title(class_names[self.y[n]])
         self.fig.canvas.flush_events()
         plt.gcf().canvas.draw_idle()
 
