@@ -2,4 +2,5 @@ Tarefas do relatório
 ====================
 
 ## Tarefas
- - [ ] Cortar espaço branco ao redor das imagens.
+ - [x] Cortar espaço branco ao redor das imagens.
+ - [x] Falar sobre número de teste e treino do CM.

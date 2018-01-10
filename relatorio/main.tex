@@ -88,9 +88,10 @@ Redes neurais com atenção seletiva manipulam os dados fazendo recortes, e ent�
 
 \section{Metodologia}
 
-Neste trabalho nós realizamos alguns experimentos aplicando Redes Neurais em versões distorcidas do MNIST e do CIFAR-10. A versão distorcida do MNIST, nós chamamos de Cluttered MNIST. E criamos imagens distorcidas do CIFAR-10 através de scripts próprios, e o chamamos de CIFAR-10-DISTORTED.
+Para a realização dos experimentos utilizamos um computador com Ubuntu 14.04.4 LTS e três placas de vídeo GeForce GTX 660. O código para a realização dos experimentos pode ser encontrado no \href{https://github.com/possatti/mestrado-dl-stn}{repositório deste projeto}.
 
-Para a realização dos experimentos utilizamos um computador com Ubuntu 14.04.4 LTS e três placas de vídeo GeForce GTX 660.
+Neste trabalho nós realizamos alguns experimentos aplicando redes neurais em versões distorcidas do MNIST e do CIFAR-10. A versão distorcida do MNIST, nós chamamos de Cluttered MNIST (CM). E criamos imagens distorcidas do CIFAR-10 (C10) através de scripts próprios, e o chamamos de CIFAR-10-DISTORTED (C10D).
+A seguir, explicamos mais detalhadamente esses datasets.
 
 \subsection{Cluttered MNIST}
 
@@ -101,11 +102,15 @@ Para a realização dos experimentos utilizamos um computador com Ubuntu 14.04.4
   \label{fig:cm-samples}
 \end{figure}
 
-O Cluttered MNIST que usamos pode ser encontrado em \footnote{\url{https://github.com/daviddao/spatial-transformer-tensorflow/raw/master/data/mnist_sequence1_sample_5distortions5x5.npz}}. O dataset foi construído utilizando as imagens do MNIST original, porém com translações aleatórias e adição de ruído (\textit{clutter}) em cada imagem. Infelizmente não temos detalhes sobre os parâmetros usados para a criação desse dataset. Alguns exemplos de imagens do Cluttered MNIST são apresentadas na figura \ref{fig:cm-samples}. Neste dataset cada imagem está na resolução de $40\times40$ píxeis, com um único canal. Este é o mesmo dataset utilizado no experimento do modelo de pesquisa de STNs do Tensorflow\footnote{\url{https://github.com/tensorflow/models/tree/master/research/transformer}}.
+O Cluttered MNIST que usamos pode ser encontrado em \footnote{\url{https://github.com/daviddao/spatial-transformer-tensorflow/raw/master/data/mnist_sequence1_sample_5distortions5x5.npz}}. O dataset foi construído utilizando as imagens do MNIST original, porém com translações aleatórias e adição de ruído (\textit{clutter}) em cada imagem. Infelizmente não temos detalhes sobre os parâmetros usados para a criação desse dataset. Alguns exemplos de imagens do Cluttered MNIST são apresentadas na Figura~\ref{fig:cm-samples}. Neste dataset cada imagem está na resolução de $40\times40$ píxeis, com um único canal.
+E o dataset é dividido em 10000 imagens para treino; 1000 para validação; e 1000 para teste.
+Este é o mesmo dataset utilizado no experimento do modelo de pesquisa de STN do Tensorflow\footnote{\url{https://github.com/tensorflow/models/tree/master/research/transformer}}.
+
+
 
 \subsection{CIFAR-10-DISTORTED}
 
-O CIFAR-10\footnote{\url{https://www.cs.toronto.edu/~kriz/cifar.html}} é um dataset que consiste de 60000 imagens coloridas de $32x32$ píxeis. Cada imagem pertencendo a uma de dez classes possíveis, com 6000 imagens para cada classe. O dataset está divido em 50000 imagens para treino e 10000 imagens para teste.
+O CIFAR-10\footnote{\url{https://www.cs.toronto.edu/~kriz/cifar.html}} é um dataset que consiste de 60000 imagens RGB de $32\times32$ píxeis. Cada imagem pertencendo a uma de dez classes possíveis, com 6000 imagens para cada classe. O dataset está divido em 50000 imagens para treino e 10000 imagens para teste.
 
 \begin{figure}[ht!]
   \centering
@@ -114,20 +119,20 @@ O CIFAR-10\footnote{\url{https://www.cs.toronto.edu/~kriz/cifar.html}} é um dat
   \label{fig:c10d-samples}
 \end{figure}
 
-Utilizando as imagens do CIFAR-10 nós criamos imagens distorcidas do mesmo ao aplicar rotação, e translação às imagens, visando criar um dataset de imagens distorcidas que chamamos de CIFAR-10-DISTORTED. O processo para a criação de uma imagem distorcida pode ser compreendido pelo seguinte processo: criamos um canvas preto $64\times64$ píxeis e colamos a imagem do CIFAR-10 ($32\times32$ píxeis) no centro; aplicamos uma rotação aleatória no intervalo de $[-20, 20]$; aplicamos uma translação aleatória em $X$ e outra em $Y$ no intervalo de $[-10, 10]$. Alguns exemplos de de figuras do CIFAR-10-DISTORTED são apresentados na Figura~\ref{fig:c10d-samples}
+Utilizando as imagens do CIFAR-10 nós criamos imagens distorcidas do mesmo ao aplicar rotação, e translação às imagens, visando criar um dataset de imagens distorcidas que chamamos de CIFAR-10-DISTORTED. O processo para a criação de uma imagem distorcida pode ser compreendido pelo seguinte processo: criamos um canvas preto $64\times64$ píxeis e colamos a imagem do CIFAR-10 ($32\times32$ píxeis) no centro; aplicamos uma rotação aleatória no intervalo de $[-20, 20]$ graus; aplicamos uma translação aleatória em $X$ e outra em $Y$ no intervalo de $[-10, 10]$ píxeis. Alguns exemplos de imagens do CIFAR-10-DISTORTED são apresentados na Figura~\ref{fig:c10d-samples}
 
-Utilizando esse método criamos um \textit{batch} de imagens de teste fixo, salvo em disco. Já para o treino, nós utilizamos o mesmo processo para gerar distorções aleatórias nas imagens de treino "\textit{on the fly}".
+Utilizando esse método criamos um \textit{batch} de imagens de teste fixo, salvo em disco. Já para o treino, nós utilizamos o mesmo processo para gerar distorções aleatórias nas imagens de treino ``\textit{on the fly}''.
 
 A divisão entre imagens de treino e teste foi mantida. Ou seja, 50000 imagens de treino e 10000 imagens de teste. Porém, 10\% das imagens de treino foram aleatoriamente selecionadas para compor um conjunto de validação, que não participou do treino (i.e. não foram utilizadas para atualizar os pesos da rede).
 
 \section{Experimentos}
 
-Nós utilizamos dois modelos de Redes Neurais em nossos testes: Baseline e STN. Ambas são Redes Neurais Convolucionais (CNN), a única diferença entre os dois modelos está no fato de que a STN tem uma \textit{Spatial Transformer Layer} como primeira camada da rede. Em todos os outros aspectos as redes são idênticas. A composição dessas duas redes variam para cada um dos datasets. A Tabela~\ref{tab:locnet-comp} mostra a composição da rede de localização (LocNet) utilizada no \textit{Spatial Transformer} das STNs (em ambos os datasets). A Tabela~\ref{tab:cm-comp} mostra a composição do Baseline para o Cluttered MNIST. A Tabela~\ref{tab:c10-comp} mostra a composição do Baseline para o CIFAR-10 e CIFAR-10-DISTORTED.
+Nós utilizamos dois modelos de redes neurais em nossos testes: Baseline e STN. Ambas são Redes Neurais Convolucionais (CNN), a única diferença entre os dois modelos está no fato de que a STN tem uma \textit{Spatial Transformer Layer} como primeira camada da rede. Em todos os outros aspectos as redes são idênticas. A composição dessas duas redes variam para cada um dos datasets. A Tabela~\ref{tab:locnet-comp} mostra a composição da rede de localização (LocNet) utilizada no \textit{Spatial Transformer} das STNs (em ambos os datasets). A Tabela~\ref{tab:cm-comp} mostra a composição do Baseline para o Cluttered MNIST. A Tabela~\ref{tab:c10-comp} mostra a composição do Baseline para o CIFAR-10 e CIFAR-10-DISTORTED.
 
 A notação que nós utilizamos para descrever as camadas das redes é a seguinte.
-$\text{Conv2D}[K, N, A]$ é uma camada convolucional 2D onde: $K$ são as dimensões do kernel; $N$ é o número de kernels; $A$ é a função de ativação utilizada.
+$\text{Conv2D}[K, N, A]$ é uma camada convolucional 2D onde: $K$ é o tamanho do kernel; $N$ é o número de kernels; $A$ é a função de ativação utilizada.
 $\text{FC}[N, A]$ é uma camada totalmente conectada, onde: $N$ é o número de neurônios; $A$ é a função de ativação.
-Em $\text{MaxPooling}[P]$, $P$ são as dimensões do \textit{pooling}.
+Em $\text{MaxPooling}[P]$, $P$ é o tamanho do \textit{cluster} do \textit{pooling}.
 
 \begin{table}[!ht]
   \begin{center}
@@ -192,12 +197,7 @@ Em $\text{MaxPooling}[P]$, $P$ são as dimensões do \textit{pooling}.
 
 Nessa seção discutimos os resultados obtidos através da execução dos experimentos.
 
-\subsection{Cluttered MNIST}
-
-A Figura~\ref{fig:cm-training-accs} mostra a acurácia dos modelos ao longo do treino (10 épocas). É possível notar que os dois modelos alcançam acurácias de treinamento muito próximas, porém acurácias de validação bem distintas. Com a STN obtendo um desempenho melhor que o Baseline. Isso se confirma ao executarmos os modelos no conjunto de teste, veja a Tabela~\ref{tab:cm-teste-accs}. Observamos que a STN obteve 6 pontos percentuais a mais que o Baseline quanto a acurácia no conjunto de testes.
-
-Na Figura~\ref{fig:cm-through-st} podemos ver alguns exemplos de imagens transformadas pela \textit{Spatial Transformer} da STN. Na Figura, as imagens originais do dataset estão lado a lado com as suas respectivas versões transformadas. Observando as transformações, poderíamos dizer que a ST aprendeu a escalar e centralizar os dígitos de forma a apresentar o dígito de maneira mais uniforme para o restante da rede. Vemos também alguns exemplos de imagens  que provavelmente se beneficiariam de rotação. Porém não notamos qualquer sinal de que a rede tenha aprendido a rotacionar os dígitos.
-% Talvez porque essa transformação, na prática, não beneficiaria a classificação.
+\subsection{Resultados no Cluttered MNIST}
 
 \begin{figure}[ht!]
   \centering
@@ -206,12 +206,7 @@ Na Figura~\ref{fig:cm-through-st} podemos ver alguns exemplos de imagens transfo
   \label{fig:cm-training-accs}
 \end{figure}
 
-\begin{figure}[ht!]
-  \centering
-  \includegraphics[width=250px]{img/CM-through-st.png}
-  \caption{Exemplos de imagens transformadas pelo Spatial Transformer. Acima de cada imagem está a classificação correta, seguida de um marcador que diz se a imagem é original (O.) ou transformada (T.).}
-  \label{fig:cm-through-st}
-\end{figure}
+A Figura~\ref{fig:cm-training-accs} mostra a acurácia dos modelos ao longo do treino (10 épocas). É possível notar que os dois modelos alcançam acurácias de treinamento muito próximas, porém acurácias de validação bem distintas. Com a STN obtendo um desempenho melhor que o Baseline. Isso se confirma ao executarmos os modelos no conjunto de teste, veja a Tabela~\ref{tab:cm-teste-accs}. Observamos que a STN obteve 6 pontos percentuais a mais que o Baseline quanto a acurácia no conjunto de testes.
 
 \begin{table}[!ht]
   \begin{center}
@@ -226,7 +221,17 @@ Na Figura~\ref{fig:cm-through-st} podemos ver alguns exemplos de imagens transfo
   \label{tab:cm-teste-accs}
 \end{table}
 
-\subsection{CIFAR-10-DISTORTED}
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=250px]{img/CM-through-st.png}
+  \caption{Exemplos de imagens transformadas pelo Spatial Transformer. Acima de cada imagem está a classificação correta, seguida de um marcador que diz se a imagem é original (O.) ou transformada (T.).}
+  \label{fig:cm-through-st}
+\end{figure}
+
+Na Figura~\ref{fig:cm-through-st} podemos ver alguns exemplos de imagens transformadas pela \textit{Spatial Transformer} da STN. Na Figura, as imagens originais do dataset estão lado a lado com as suas respectivas versões transformadas. Observando as transformações, poderíamos dizer que a ST aprendeu a escalar e centralizar os dígitos de forma a apresentar o dígito de maneira mais normalizada para o restante da rede. Vemos também alguns exemplos de imagens  que provavelmente se beneficiariam de rotação. Porém não notamos qualquer sinal de que a rede tenha aprendido a rotacionar os dígitos.
+% Talvez porque essa transformação, na prática, não beneficiaria a classificação.
+
+\subsection{Resultados no CIFAR-10-DISTORTED}
 
 Além de executar os experimentos no CIFAR-10-DISTORTED, executamos também no CIFAR-10 (usando os mesmo modelos). A Figura~\ref{fig:c10-training-accs} mostra a acurácia de treinamento e validação ao longo de 20 épocas de treino.
 
@@ -237,7 +242,7 @@ Além de executar os experimentos no CIFAR-10-DISTORTED, executamos também no C
   \label{fig:c10-training-accs}
 \end{figure}
 
-Podemos notar que após algumas épocas de treinamento a qualidade da STN piorou drasticamente. Investigando o problema, passamos algumas imagens do CIFAR-10-DISTORTED através do \textit{Spatial Transformer} do modelo treinado, e obtivemos imagens completamente pretas. Isso nos leva a conjecturar que, após algum tempo de treinamento, a rede de localização se perde de forma que o foco do \textit{Spatial Transformer} fica totalmente nas regiões pretas da figura e não consegue recuperar o foco na imagem colorida de forma alguma. Não entendemos exatamente porque isso aconteceu, mas pensamos que talvez diminuindo a \textit{Learning Rate} ou utilizando um agendamento da \textit{Learning Rate} (como é usado no artigo da STN) poderíamos ter amenizado ou contornado esse problema. Infelizmente não tivemos tempo para abordar essas possibilidades e realizar mais experimentos.
+Podemos notar que após algumas épocas de treinamento a qualidade da STN piorou drasticamente. Investigando o problema, passamos algumas imagens do CIFAR-10-DISTORTED através do \textit{Spatial Transformer} do modelo treinado, e obtivemos imagens completamente pretas. Isso nos leva a conjecturar que, após algum tempo de treinamento, a rede de localização se perde de forma que o foco do \textit{Spatial Transformer} fica totalmente nas regiões pretas da figura e não consegue recuperar o foco na imagem colorida de forma alguma. Não entendemos exatamente porque isso aconteceu, mas pensamos que talvez poderíamos ter amenizado ou contornado esse problema adotando uma das seguintes estratégias: diminuindo a \textit{Learning Rate}; utilizando um agendamento da \textit{Learning Rate} (como é feito no artigo da STN); ou utilizando uma rede de localização mais robusta (mais parâmetros). Infelizmente não tivemos tempo para abordar essas possibilidades e realizar mais experimentos.
 
 A Tabela~\ref{tab:c10-teste-accs} mostra a acurácia dos modelos treinados.
 
@@ -255,6 +260,10 @@ A Tabela~\ref{tab:c10-teste-accs} mostra a acurácia dos modelos treinados.
   \caption{Acurácia dos modelos no conjunto de testes do CIFAR-10 e CIFAR-10-DISTORTED.}
   \label{tab:c10-teste-accs}
 \end{table}
+
+\section{Conclusão}
+
+O Spatial Transformer é um módulo construído para adicionar invariância espacial as CNNs. Ele faz isso ao aplicar uma transformação na imagem de entrada com objetivo de trazer foco ao objeto de interesse. Através dos experimentos que realizamos no \textit{Cluttered MNIST} nós pudemos observar o funcionamento do ST e os resultados que ele pode trazer para o modelo. Realizamos também um segundo experimento nos datasets CIFAR-10 e CIFAR-10-DISTORTED, mas os modelos foram gravemente prejudicados pelo uso do ST, por motivos que não pudemos identificar por completo.
 
 
 % conference papers do not normally have an appendix
