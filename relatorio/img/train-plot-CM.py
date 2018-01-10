@@ -126,7 +126,7 @@ for ax in train_ax, val_ax:
 plt.legend()
 
 save_path = os.path.join(os.path.dirname(__file__), 'CM-training-accs.png')
-save = True
+save = False
 if save:
     plt.savefig(save_path)
 else:
